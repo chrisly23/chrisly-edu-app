@@ -1317,10 +1317,13 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
       </table>`;
     }
 
-    const payload = { 
-      contents: [{ parts: [{ text: userPrompt }] }], 
-      systemInstruction: { parts: [{ text: systemPrompt }] } 
-    };
+    const payload = {
+  contents: [{
+    parts: [{
+      text: prompt // Pastikan variabel 'prompt' adalah teks perintah Anda
+    }]
+  }]
+};
 
     let aiText = null;
     let attempt = 0;
@@ -1329,20 +1332,11 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
 
     while (attempt <= maxRetries && !aiText) {
       try {
-        // Contoh struktur yang benar untuk Gemini 1.5
-const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    contents: [{
-      parts: [{
-        text: prompt // Pastikan variabel prompt Anda ada di sini
-      }]
-    }]
-  })
-});
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
         
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         
