@@ -74,7 +74,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'chrisly-education-v1';
-const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
 // --- ADMIN CREDENTIALS ---
 const ADMIN_CREDENTIALS = {
@@ -1329,7 +1329,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
 
     while (attempt <= maxRetries && !aiText) {
       try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
