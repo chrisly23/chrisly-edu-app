@@ -1331,12 +1331,14 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
 
     while (attempt <= maxRetries && !aiText) {
       try {
-        // PERUBAHAN KUNCI: Menambahkan '-latest' pada nama model
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload) 
-        });
+        // PASTIKAN BARIS INI PERSIS SEPERTI INI
+const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify(payload)
+});
         
         if (!res.ok) {
           const errorData = await res.json();
