@@ -1317,15 +1317,13 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
       </table>`;
     }
 
-    const prompt = "Buatkan RPP lengkap untuk topik ini...";
-
-    const payload = {
-  contents: [{
-    parts: [{
-      text: prompt
-    }]
-  }]
-};
+    const finalPayload = {
+      contents: [{
+        parts: [{
+          text: userPrompt
+        }]
+      }]
+    };
 
     let aiText = null;
     let attempt = 0;
@@ -1334,7 +1332,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
 
     while (attempt <= maxRetries && !aiText) {
       try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
