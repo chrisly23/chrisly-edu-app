@@ -74,7 +74,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'chrisly-education-v1';
-const apiKey = "AIzaSyDljnhISy7SlqjBvJmdRWWoJrNo8RaRDqo";
+const apiKey = import.meta.env.VITE_API_KEY;
 
 // --- ADMIN CREDENTIALS ---
 const ADMIN_CREDENTIALS = {
@@ -2463,4 +2463,3 @@ const AdminGallery = () => {
 };
 
 export default App;
-AIzaSyDljnhISy7SlqjBvJmdRWWoJrNo8RaRDqo
