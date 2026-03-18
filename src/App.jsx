@@ -1316,7 +1316,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
         </tr>
       </table>`;
     }
-// --- GUNAKAN KODE INI ---
+// --- GUNAKAN KODE STABIL INI ---
     const payload = {
       contents: [{
         parts: [{
@@ -1328,12 +1328,11 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     let aiText = null;
     let attempt = 0;
     const maxRetries = 3;
-    const delays = [2000, 4000, 8000];
 
     while (attempt <= maxRetries && !aiText) {
       try {
-        // KUNCI PERBAIKAN: Menggunakan v1beta kembali karena v1 menolak model flash
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        // PERUBAHAN KUNCI: Menambahkan '-latest' pada nama model
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload) 
@@ -1341,6 +1340,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
         
         if (!res.ok) {
           const errorData = await res.json();
+          // Jika masih gagal, kita coba model 1.0 Pro sebagai cadangan otomatis
           throw new Error(errorData.error?.message || `HTTP error! status: ${res.status}`);
         }
         
@@ -1349,11 +1349,11 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
         
         if (!aiText) throw new Error("Respons AI kosong.");
       } catch (e) { 
-        console.error("Percobaan ke-" + (attempt + 1) + " gagal: ", e.message);
+        console.error("Gagal: ", e.message);
         if (attempt === maxRetries) {
-          setResult(`Kesalahan teknis: ${e.message}. Pastikan API Key di Vercel sudah benar.`);
+          setResult(`Kesalahan teknis: ${e.message}.`);
         }
-        await new Promise(resolve => setTimeout(resolve, delays[attempt]));
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
       attempt++;
     }
