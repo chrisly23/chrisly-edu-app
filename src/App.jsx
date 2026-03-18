@@ -1316,7 +1316,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
         </tr>
       </table>`;
     }
-// --- MULAI COPY DARI SINI ---
+// --- GUNAKAN KODE INI ---
     const payload = {
       contents: [{
         parts: [{
@@ -1327,16 +1327,16 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
 
     let aiText = null;
     let attempt = 0;
-    const maxRetries = 5;
-    const delays = [1000, 2000, 4000, 8000, 16000];
+    const maxRetries = 3;
+    const delays = [2000, 4000, 8000];
 
     while (attempt <= maxRetries && !aiText) {
       try {
-        // Gunakan v1 (lebih stabil) dan pastikan nama variabel adalah 'payload'
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        // KUNCI PERBAIKAN: Menggunakan v1beta kembali karena v1 menolak model flash
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload) 
         });
         
         if (!res.ok) {
@@ -1349,15 +1349,14 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
         
         if (!aiText) throw new Error("Respons AI kosong.");
       } catch (e) { 
-        if (attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, delays[attempt]));
-        } else {
-          setResult(`Terjadi kesalahan teknis: ${e.message}`);
+        console.error("Percobaan ke-" + (attempt + 1) + " gagal: ", e.message);
+        if (attempt === maxRetries) {
+          setResult(`Kesalahan teknis: ${e.message}. Pastikan API Key di Vercel sudah benar.`);
         }
+        await new Promise(resolve => setTimeout(resolve, delays[attempt]));
       }
       attempt++;
     }
-    // --- SELESAI COPY ---
 
     if (aiText) {
       setResult(aiText);
