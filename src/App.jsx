@@ -74,7 +74,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'chrisly-education-v1';
-const apiKey = "AIzaSyA_2HlfnFe58Jx4VewLP-ATI1OYj5079mI";
+const apiKey = "AIzaSyDljnhISy7SlqjBvJmdRWWoJrNo8RaRDqo";
 
 // --- ADMIN CREDENTIALS ---
 const ADMIN_CREDENTIALS = {
@@ -1376,7 +1376,8 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
       </table>`;
     }
 
-    const payload = {
+    // --- MULAI COPY DARI SINI ---
+    const finalPayload = {
       contents: [{
         parts: [{
           text: userPrompt
@@ -1384,66 +1385,44 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
       }]
     };
 
-    let aiText = null;
-    let lastError = "";
-    
-    const cleanApiKey = (apiKey || "").trim();
-    
-    // Sistem Auto-Cadangan Model Gemini
-    const modelsToTry = [
-      'gemini-1.5-flash', 
-      'gemini-1.5-pro', 
-      'gemini-1.5-flash-8b', 
-      'gemini-pro'
-    ];
+    // 1. TEMPELKAN API KEY ANDA LANGSUNG DI SINI (Ganti tulisan AIza...)
+    const KUNCI_SAKTI = "AIzaSyDljnhISy7SlqjBvJmdRWWoJrNo8RaRDqo";
 
-    for (const modelName of modelsToTry) {
-      if (aiText) break;
-
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          
-          if (!res.ok) {
-            const errorData = await res.json();
-            const errMsg = errorData.error?.message || `HTTP error! status: ${res.status}`;
-            
-            // Lanjut ke model berikutnya jika Google menolak model ini
-            if (res.status === 404 || errMsg.includes('not found') || errMsg.includes('not supported')) {
-              lastError = errMsg;
-              break; 
-            }
-            throw new Error(errMsg);
-          }
-          
-          const data = await res.json();
-          aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          
-          if (aiText) break;
-        } catch (e) { 
-          lastError = e.message;
-          if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      // 2. KITA GUNAKAN JALUR PALING STANDAR DAN AMAN
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${KUNCI_SAKTI}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(finalPayload)
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error?.message || `HTTP error! status: ${res.status}`);
+      }
+      
+      const data = await res.json();
+      const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      
+      if (aiText) {
+        setResult(aiText);
+        // Catat penggunaan
+        if (!isDemo) {
+          const today = new Date().toISOString().split('T')[0];
+          const usageRef = doc(db, 'artifacts', appId, 'public', 'data', 'usages', `${today}_${userData.username}`);
+          await setDoc(usageRef, { count: increment(1), date: today, username: userData.username }, { merge: true });
         }
+      } else {
+        throw new Error("Respons AI kosong dari Google.");
       }
-    }
-
-    if (aiText) {
-      setResult(aiText);
-      if (!isDemo) {
-        const today = new Date().toISOString().split('T')[0];
-        const usageRef = doc(db, 'artifacts', appId, 'public', 'data', 'usages', `${today}_${userData.username}`);
-        await setDoc(usageRef, { count: increment(1), date: today, username: userData.username }, { merge: true });
-      }
-    } else {
-      setResult(`Kesalahan teknis API Google: ${lastError}. Pastikan API Key di Vercel sudah terisi dengan benar.`);
+    } catch (e) { 
+      console.error("Gagal Total: ", e);
+      setResult(`Kesalahan: ${e.message}`);
     }
     
     setIsGenerating(false);
-  }; 
+  };
+  // --- SELESAI COPY --- 
 
   const saveToFirebase = async () => {
     if (!result || isDemo) return;
