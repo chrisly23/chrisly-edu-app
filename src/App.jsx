@@ -344,22 +344,60 @@ const App = () => {
       }
     };
     initAuth();
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+
+    // MEMPERBAIKI SESSION REFRESH
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
-      if (u) checkUserRecord(u.uid);
-      else setLoading(false);
+      
+      const savedAdmin = localStorage.getItem('chrisly_admin');
+      const savedGuru = localStorage.getItem('chrisly_guru');
+
+      if (savedAdmin) {
+        const adminData = { role: 'admin', name: 'Administrator Utama', username: 'admin', sekolah: 'Pusat Chrisly Education', plan: 'ultra' };
+        setUserData(adminData);
+        setView('admin');
+        setLoading(false);
+      } else if (savedGuru) {
+        try {
+          const registryRef = collection(db, 'artifacts', appId, 'public', 'data', 'registry');
+          const snap = await getDocs(registryRef);
+          const foundDoc = snap.docs.find(d => d.data().username === savedGuru);
+
+          if (foundDoc) {
+            setUserData({ ...foundDoc.data(), role: 'guru' });
+            setView('dashboard');
+          } else {
+            localStorage.removeItem('chrisly_guru');
+            setView('login');
+          }
+        } catch (e) {
+           setView('login');
+        }
+        setLoading(false);
+      } else if (u) {
+        checkUserRecord(u.uid);
+      } else {
+        setLoading(false);
+        setView('login');
+      }
     });
     return () => unsubscribe();
   }, []);
 
   const checkUserRecord = async (uid) => {
-    const userRef = doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info');
-    const userSnap = await getDoc(userRef);
-    if (userSnap.exists()) {
-      const data = userSnap.data();
-      setUserData(data);
-      setView(data.role === 'admin' ? 'admin' : 'dashboard');
-    } else { setView('login'); }
+    try {
+      const userRef = doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info');
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        setUserData(data);
+        setView(data.role === 'admin' ? 'admin' : 'dashboard');
+      } else { 
+        setView('login'); 
+      }
+    } catch(e) {
+      setView('login');
+    }
     setLoading(false);
   };
 
@@ -390,6 +428,7 @@ const App = () => {
       const data = { ...registryData, role: 'guru' };
       await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'info'), data);
       setUserData(data);
+      localStorage.setItem('chrisly_guru', username); // Simpan Sesi
       setView('dashboard');
     } else { 
       setMessage({ type: 'error', text: 'ID Akses tidak ditemukan.' }); 
@@ -404,12 +443,21 @@ const App = () => {
       const adminData = { role: 'admin', name: 'Administrator Utama', username: 'admin', sekolah: 'Pusat Chrisly Education', plan: 'ultra' };
       await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'info'), adminData);
       setUserData(adminData);
+      localStorage.setItem('chrisly_admin', 'true'); // Simpan Sesi
       setView('admin');
       setIsAdminAuthModalOpen(false);
       setLoading(false);
     } else {
       setAdminError("Kredensial Admin Salah!");
     }
+  };
+
+  const handleLogout = async () => {
+    localStorage.removeItem('chrisly_guru');
+    localStorage.removeItem('chrisly_admin');
+    await auth.signOut();
+    setUserData(null);
+    setView('login');
   };
 
   if (loading) return (
@@ -453,7 +501,7 @@ const App = () => {
             setView={(v) => { setView(v); setIsSidebarOpen(false); }} 
             activeGenerator={activeGenerator}
             setActiveGenerator={(id) => { setActiveGenerator(id); setIsSidebarOpen(false); }}
-            onLogout={() => { setView('login'); setUserData(null); }} 
+            onLogout={handleLogout} 
             userName={userData?.name} 
             plan={userData?.plan}
             isOpen={isSidebarOpen} 
@@ -848,7 +896,6 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     tingkatKognitif: 'C1-C3 (LOTS/MOTS)'
   });
 
-  // FIX: Reset result and states when generator type changes
   useEffect(() => {
     setResult("");
     setMode('preview');
@@ -1316,7 +1363,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
         </tr>
       </table>`;
     }
-// --- GUNAKAN KODE STABIL INI ---
+
     const payload = {
       contents: [{
         parts: [{
@@ -1326,38 +1373,50 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     };
 
     let aiText = null;
-    let attempt = 0;
-    const maxRetries = 3;
+    let lastError = "";
+    
+    const cleanApiKey = (apiKey || "").trim();
+    
+    // Sistem Auto-Cadangan Model Gemini
+    const modelsToTry = [
+      'gemini-1.5-flash', 
+      'gemini-1.5-pro', 
+      'gemini-1.5-flash-8b', 
+      'gemini-pro'
+    ];
 
-    while (attempt <= maxRetries && !aiText) {
-      try {
-        // PASTIKAN BARIS INI PERSIS SEPERTI INI
-const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify(payload)
-});
-        
-        if (!res.ok) {
-          const errorData = await res.json();
-          // Jika masih gagal, kita coba model 1.0 Pro sebagai cadangan otomatis
-          throw new Error(errorData.error?.message || `HTTP error! status: ${res.status}`);
+    for (const modelName of modelsToTry) {
+      if (aiText) break;
+
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${cleanApiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          
+          if (!res.ok) {
+            const errorData = await res.json();
+            const errMsg = errorData.error?.message || `HTTP error! status: ${res.status}`;
+            
+            // Lanjut ke model berikutnya jika Google menolak model ini
+            if (res.status === 404 || errMsg.includes('not found') || errMsg.includes('not supported')) {
+              lastError = errMsg;
+              break; 
+            }
+            throw new Error(errMsg);
+          }
+          
+          const data = await res.json();
+          aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          
+          if (aiText) break;
+        } catch (e) { 
+          lastError = e.message;
+          if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 2000));
         }
-        
-        const data = await res.json();
-        aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        
-        if (!aiText) throw new Error("Respons AI kosong.");
-      } catch (e) { 
-        console.error("Gagal: ", e.message);
-        if (attempt === maxRetries) {
-          setResult(`Kesalahan teknis: ${e.message}.`);
-        }
-        await new Promise(resolve => setTimeout(resolve, 2000));
       }
-      attempt++;
     }
 
     if (aiText) {
@@ -1367,9 +1426,12 @@ const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models
         const usageRef = doc(db, 'artifacts', appId, 'public', 'data', 'usages', `${today}_${userData.username}`);
         await setDoc(usageRef, { count: increment(1), date: today, username: userData.username }, { merge: true });
       }
+    } else {
+      setResult(`Kesalahan teknis API Google: ${lastError}. Pastikan API Key di Vercel sudah terisi dengan benar.`);
     }
+    
     setIsGenerating(false);
-  };
+  }; 
 
   const saveToFirebase = async () => {
     if (!result || isDemo) return;
