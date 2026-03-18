@@ -1317,6 +1317,8 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
       </table>`;
     }
 
+    const prompt = "Buatkan RPP lengkap untuk topik ini...";
+
     const payload = {
   contents: [{
     parts: [{
