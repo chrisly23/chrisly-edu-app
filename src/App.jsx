@@ -1402,7 +1402,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
 
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${cleanApiKey}`, {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
