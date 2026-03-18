@@ -1320,7 +1320,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     const payload = {
   contents: [{
     parts: [{
-      text: prompt // Pastikan variabel 'prompt' adalah teks perintah Anda
+      text: prompt
     }]
   }]
 };
