@@ -74,7 +74,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'chrisly-education-v1';
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+const apiKey = "AIzaSyA_2HlfnFe58Jx4VewLP-ATI1OYj5079mI";
 
 // --- ADMIN CREDENTIALS ---
 const ADMIN_CREDENTIALS = {
@@ -419,21 +419,33 @@ const App = () => {
   const handleLogin = async (username) => {
     setLoading(true);
     setMessage(null);
-    const registryRef = collection(db, 'artifacts', appId, 'public', 'data', 'registry');
-    const snap = await getDocs(registryRef);
-    const foundDoc = snap.docs.find(d => d.data().username === username);
+    try {
+      const registryRef = collection(db, 'artifacts', appId, 'public', 'data', 'registry');
+      const snap = await getDocs(registryRef);
+      const foundDoc = snap.docs.find(d => d.data().username === username);
 
-    if (foundDoc) {
-      const registryData = foundDoc.data();
-      const data = { ...registryData, role: 'guru' };
-      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'info'), data);
-      setUserData(data);
-      localStorage.setItem('chrisly_guru', username); // Simpan Sesi
-      setView('dashboard');
-    } else { 
-      setMessage({ type: 'error', text: 'ID Akses tidak ditemukan.' }); 
+      if (foundDoc) {
+        const registryData = foundDoc.data();
+        const data = { ...registryData, role: 'guru' };
+        
+        // Pastikan user tidak null sebelum menyimpan
+        if (user && user.uid) {
+          await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'info'), data);
+        }
+        
+        setUserData(data);
+        localStorage.setItem('chrisly_guru', username); // Simpan Sesi
+        setView('dashboard');
+      } else { 
+        setMessage({ type: 'error', text: 'ID Akses tidak ditemukan.' }); 
+      }
+    } catch (error) {
+      console.error("Login Error: ", error);
+      setMessage({ type: 'error', text: 'Gagal terhubung ke database. Coba lagi.' });
+    } finally {
+      // INI YANG MEMBUAT LOADING BERHENTI APAPUN YANG TERJADI
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const loginAsAdmin = async (userIn, passIn, setAdminError) => {
