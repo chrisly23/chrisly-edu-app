@@ -1316,8 +1316,8 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
         </tr>
       </table>`;
     }
-
-    const finalPayload = {
+// --- MULAI COPY DARI SINI ---
+    const payload = {
       contents: [{
         parts: [{
           text: userPrompt
@@ -1332,13 +1332,17 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
 
     while (attempt <= maxRetries && !aiText) {
       try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        // Gunakan v1 (lebih stabil) dan pastikan nama variabel adalah 'payload'
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(finalPayload)
+          body: JSON.stringify(payload)
         });
         
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error?.message || `HTTP error! status: ${res.status}`);
+        }
         
         const data = await res.json();
         aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -1348,11 +1352,12 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
         if (attempt < maxRetries) {
           await new Promise(resolve => setTimeout(resolve, delays[attempt]));
         } else {
-          setResult(`Terjadi kesalahan teknis saat menghubungkan ke AI. Mohon coba lagi. (${e.message})`);
+          setResult(`Terjadi kesalahan teknis: ${e.message}`);
         }
       }
       attempt++;
     }
+    // --- SELESAI COPY ---
 
     if (aiText) {
       setResult(aiText);
