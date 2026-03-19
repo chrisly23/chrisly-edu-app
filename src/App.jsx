@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { 
   getAuth, 
   signInWithCustomToken,
@@ -63,19 +62,18 @@ import {
 } from 'lucide-react';
 
 // --- INITIALIZATION ---
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+  apiKey: "AIzaSyD0GUvFCAYVr6WuzlMR2f9cvFwQCi8cj_8c",
+  authDomain: "chrisly-edu-db.firebaseapp.com",
+  projectId: "chrisly-edu-db",
+  storageBucket: "chrisly-edu-db.firebasestorage.app",
+  messagingSenderId: "1068648356855",
+  appId: "1:1068648356855:web:ae3ed8ee3f140390d9acf2"
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'chrisly-education-v1';
-const apiKey = "AIzaSyDljnhISy7SlqjBvJmdRWWoJrNo8RaRDqo";
 
 // --- ADMIN CREDENTIALS ---
 const ADMIN_CREDENTIALS = {
@@ -567,6 +565,7 @@ const App = () => {
                   userData={userData} 
                   usageCount={usageCount} 
                   onSuccess={() => setView('myDocs')} 
+                  isDemo={false}
                 />
               )}
               {view === 'myDocs' && <MyDocuments user={user} appId={appId} userData={userData} />}
@@ -916,13 +915,6 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     setLimitError(false);
   }, [type]);
 
-  const checkPlanValidity = () => {
-    if (isDemo) return true; 
-    const plan = userData?.plan || 'plus';
-    const limit = PLANS[plan]?.limit || 5;
-    return usageCount < limit;
-  };
-
   const handleLogoUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -931,46 +923,77 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     }
   };
 
-  // Pastikan baris import ini ada di PALING ATAS file App.jsx Anda
-  // import { GoogleGenerativeAI } from "@google/generative-ai";
-
+  // --- FUNGSI AI YANG SUDAH DIPERBAIKI ---
   const generateAI = async () => {
-  
+    // 1. Validasi Limit (Jika bukan demo)
+    if (!isDemo && usageCount >= (PLANS[userData?.plan || 'plus']?.limit || 5)) {
+      setLimitError(true);
+      return;
+    }
+    
     setFormError("");
     setLimitError(false);
     setIsGenerating(true);
-    setResult("Sedang menyusun dokumen... Mohon tunggu.");
+    setResult("Sedang menyusun dokumen... Mohon tunggu. Proses ini membutuhkan waktu sekitar 10-30 detik.");
 
     try {
-
+      // 2. Hubungkan ke Gemini menggunakan Kunci Rahasia dari Vercel
       const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-      
-    
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
+      // 3. Merakit Prompt dari Form Input
+      const profilAktif = Object.entries(form.profilPelajar)
+        .filter(([_, v]) => v)
+        .map(([k]) => k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()))
+        .join(', ') || '-';
+
+      const promptSistem = `Anda adalah asisten AI ahli pendidikan (Chrisly Education). Tugas Anda adalah membuat dokumen pendidikan berformat Markdown yang sangat rapi, mendetail, dan siap digunakan oleh guru. Gunakan bahasa yang ${form.gayaBahasa || 'Formal & Akademis'}. JANGAN memberikan teks pembuka/penutup. Langsung berikan isi Markdown-nya.`;
+
+      const promptPengguna = `
+      Tolong buatkan dokumen dengan spesifikasi berikut:
+      - Jenis Dokumen: ${type ? type.toUpperCase() : 'DOKUMEN'}
+      - Mata Pelajaran/Topik: ${form.mapel || form.materi}
+      - Jenjang & Kelas: ${form.jenjang} / Kelas ${form.kelas} (Fase ${form.fase})
+      - Tujuan/Kompetensi: ${form.tujuan}
+      - Model Pembelajaran: ${form.modelPembelajaran}
+      - Profil Pelajar Pancasila: ${profilAktif}
+      - Alokasi Waktu: ${form.jumlahPertemuan} Pertemuan (${form.jumlahJP} JP x ${form.menitPerJP} Menit)
+      - Nama Guru: ${form.namaGuru}
+      - Sekolah: ${form.namaSekolah || userData?.sekolah}
+
+      ${type === 'analisis_cp' ? `- Narasi CP: ${form.narasiCP}\n- Target Kognitif: ${form.tingkatKognitif}` : ''}
+      ${type === 'lkpd' ? `- Jumlah Soal Pilihan Ganda: ${form.jumlahPG} (Opsi ${form.opsiPG})\n- Jumlah Soal Esai: ${form.jumlahEsai}` : ''}
+      ${type === 'rpl' ? `- Komponen: ${form.komponenLayanan}\n- Bidang: ${form.bidangLayanan}\n- Fungsi: ${form.fungsiLayanan}` : ''}
       
-      const promptLengkap = `${systemPrompt} \n\n PERINTAH: \n ${userPrompt}`;
-      
-      const resultAI = await model.generateContent(promptLengkap);
+      Pastikan format Markdown-nya menggunakan tabel (|---|) untuk merapikan informasi, dan gunakan heading (#, ##, ###) dengan benar.
+      `;
+
+      // 4. Kirim menggunakan format Object (Standard V1 SDK)
+      const resultAI = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: promptSistem + "\n\n" + promptPengguna }] }]
+      });
+
       const response = await resultAI.response;
       const text = response.text();
 
-      // 5. Tampilkan hasil
+      // 5. Tampilkan Hasil
       if (text) {
         setResult(text);
         
-        // Catat kuota harian jika bukan demo
-        if (!isDemo) {
+        // 6. Potong Kuota Harian (Jika bukan demo)
+        if (!isDemo && userData?.username) {
           const today = new Date().toISOString().split('T')[0];
           const usageRef = doc(db, 'artifacts', appId, 'public', 'data', 'usages', `${today}_${userData.username}`);
           await setDoc(usageRef, { count: increment(1), date: today, username: userData.username }, { merge: true });
         }
+      } else {
+         throw new Error("AI mengembalikan respon kosong.");
       }
 
     } catch (error) {
-      console.error("Detail Error:", error);
-      // Pesan error ini akan memberi tahu kita jika API Key diblokir atau ada masalah lain
-      setResult("Terjadi kesalahan teknis: " + error.message);
+      console.error("Detail Error AI:", error);
+      setResult("");
+      setFormError(`Gagal menyusun dokumen: ${error.message || "Periksa API Key atau koneksi internet Anda."}`);
     } finally {
       setIsGenerating(false);
     }
