@@ -931,38 +931,47 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     }
   };
 
+  // Pastikan baris import ini ada di PALING ATAS file App.jsx Anda
+  // import { GoogleGenerativeAI } from "@google/generative-ai";
+
   const generateAI = async () => {
-    // A. Reset pesan error agar bersih
+  
     setFormError("");
     setLimitError(false);
-
-    // B. Tampilkan tulisan "Sedang memproses..." di layar
     setIsGenerating(true);
     setResult("Sedang menyusun dokumen... Mohon tunggu.");
 
     try {
-      // 1. Hubungkan ke Google menggunakan Kunci (API KEY) Anda
-      const genAI = new GoogleGenerativeAI("AIzaSyDljnhISy7SlqjBvJmdRWWoJrNo8RaRDqo");
+
+      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
       
-      // 2. Pilih model AI-nya (Gemini 1.5 Flash adalah yang tercepat)
+    
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-      // 3. Gabungkan instruksi (System Prompt) dengan isi form (User Prompt)
-      const instruksiLengkap = `${systemPrompt} \n\n Data dari Guru: \n ${userPrompt}`;
+      
+      const promptLengkap = `${systemPrompt} \n\n PERINTAH: \n ${userPrompt}`;
+      
+      const resultAI = await model.generateContent(promptLengkap);
+      const response = await resultAI.response;
+      const text = response.text();
 
-      // 4. Minta AI untuk menjawab
-      const hasilDariGoogle = await model.generateContent(instruksiLengkap);
-      const jawabanTeks = hasilDariGoogle.response.text();
-
-      // 5. Tampilkan hasilnya ke layar aplikasi
-      setResult(jawabanTeks);
+      // 5. Tampilkan hasil
+      if (text) {
+        setResult(text);
+        
+        // Catat kuota harian jika bukan demo
+        if (!isDemo) {
+          const today = new Date().toISOString().split('T')[0];
+          const usageRef = doc(db, 'artifacts', appId, 'public', 'data', 'usages', `${today}_${userData.username}`);
+          await setDoc(usageRef, { count: increment(1), date: today, username: userData.username }, { merge: true });
+        }
+      }
 
     } catch (error) {
-      // Jika ada yang salah (internet mati, kunci salah), munculkan pesannya
-      console.error("Ada masalah:", error);
-      setResult("Maaf, terjadi kesalahan: " + error.message);
+      console.error("Detail Error:", error);
+      // Pesan error ini akan memberi tahu kita jika API Key diblokir atau ada masalah lain
+      setResult("Terjadi kesalahan teknis: " + error.message);
     } finally {
-      // Matikan animasi loading setelah selesai (berhasil atau gagal)
       setIsGenerating(false);
     }
   };
