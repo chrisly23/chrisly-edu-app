@@ -1390,8 +1390,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
       // Untuk menjalankan di lingkungan preview ini, kita biarkan apiKey kosong.
       // Nanti saat Anda deploy ke Vercel, ubah baris ini menjadi:
       // const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      const apiKey = ""; 
-
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       // Pemanggilan Resmi menggunakan SDK Google Generative AI
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ 
