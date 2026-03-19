@@ -63,14 +63,13 @@ import {
 } from 'lucide-react';
 
 // --- INITIALIZATION ---
-// --- INITIALIZATION ---
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyAXGHhWmpP0V_HDYpTktKHk42yZZyPCFvw",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "chrisly-edu-db.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "chrisly-edu-db",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "chrisly-edu-db.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_SENDER_ID || "1068648356855",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:1068648356855:web:ae3ed8ee3f140390d9acf2"
+  apiKey: "AIzaSyAXGHhWmpP0V_HDYpTktKHk42yZZyPCFvw",
+  authDomain: "chrisly-edu-db.firebaseapp.com",
+  projectId: "chrisly-edu-db",
+  storageBucket: "chrisly-edu-db.firebasestorage.app",
+  messagingSenderId: "1068648356855",
+  appId: "1:1068648356855:web:ae3ed8ee3f140390d9acf2"
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -338,10 +337,19 @@ const App = () => {
 
   useEffect(() => {
     const initAuth = async () => {
-      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-        await signInWithCustomToken(auth, __initial_auth_token);
-      } else {
-        await signInAnonymously(auth);
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          try {
+            await signInWithCustomToken(auth, __initial_auth_token);
+          } catch (tokenError) {
+            console.warn("Token bawaan tidak cocok dengan konfigurasi Firebase kustom Anda. Beralih ke autentikasi anonim...", tokenError);
+            await signInAnonymously(auth);
+          }
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (err) {
+        console.error("Gagal inisialisasi Firebase Auth:", err);
       }
     };
     initAuth();
@@ -932,78 +940,9 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     }
   };
 
+  // FUNGSI GENERATE AI YANG SUDAH DIPERBAIKI (TIDAK ADA LOOP/FETCH GANDA)
   const generateAI = async () => {
     if (!isDemo && usageCount >= (PLANS[userData?.plan || 'plus']?.limit || 5)) {
-      setLimitError(true);
-      return;
-    }
-    setFormError("");
-    setLimitError(false);
-    setIsGenerating(true);
-    setResult("Sedang menyusun dokumen... Mohon tunggu. Proses ini membutuhkan waktu sekitar 10-30 detik.");
-try {
-      // 2. Hubungkan ke Gemini menggunakan Kunci Rahasia dari Vercel
-      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-      // 3. Merakit Prompt dari Form Input
-      const profilAktif = Object.entries(form.profilPelajar)
-        .filter(([_, v]) => v)
-        .map(([k]) => k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()))
-        .join(', ') || '-';
-
-      const promptSistem = `Anda adalah asisten AI ahli pendidikan (Chrisly Education). Tugas Anda adalah membuat dokumen pendidikan berformat Markdown yang sangat rapi, mendetail, dan siap digunakan oleh guru. Gunakan bahasa yang ${form.gayaBahasa || 'Formal & Akademis'}. JANGAN memberikan teks pembuka/penutup. Langsung berikan isi Markdown-nya.`;
-
-      const promptPengguna = `
-      Tolong buatkan dokumen dengan spesifikasi berikut:
-      - Jenis Dokumen: ${type ? type.toUpperCase() : 'DOKUMEN'}
-      - Mata Pelajaran/Topik: ${form.mapel || form.materi}
-      - Jenjang & Kelas: ${form.jenjang} / Kelas ${form.kelas} (Fase ${form.fase})
-      - Tujuan/Kompetensi: ${form.tujuan}
-      - Model Pembelajaran: ${form.modelPembelajaran}
-      - Profil Pelajar Pancasila: ${profilAktif}
-      - Alokasi Waktu: ${form.jumlahPertemuan} Pertemuan (${form.jumlahJP} JP x ${form.menitPerJP} Menit)
-      - Nama Guru: ${form.namaGuru}
-      - Sekolah: ${form.namaSekolah || userData?.sekolah}
-
-      ${type === 'analisis_cp' ? `- Narasi CP: ${form.narasiCP}\n- Target Kognitif: ${form.tingkatKognitif}` : ''}
-      ${type === 'lkpd' ? `- Jumlah Soal Pilihan Ganda: ${form.jumlahPG} (Opsi ${form.opsiPG})\n- Jumlah Soal Esai: ${form.jumlahEsai}` : ''}
-      ${type === 'rpl' ? `- Komponen: ${form.komponenLayanan}\n- Bidang: ${form.bidangLayanan}\n- Fungsi: ${form.fungsiLayanan}` : ''}
-      
-      Pastikan format Markdown-nya menggunakan tabel (|---|) untuk merapikan informasi, dan gunakan heading (#, ##, ###) dengan benar.
-      `;
-
-      // 4. Kirim menggunakan format Object (Standard V1 SDK)
-      const resultAI = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: promptSistem + "\n\n" + promptPengguna }] }]
-      });
-
-      const response = await resultAI.response;
-      const text = response.text();
-
-      // 5. Tampilkan Hasil
-      if (text) {
-        setResult(text);
-        
-        // 6. Potong Kuota Harian (Jika bukan demo)
-        if (!isDemo && userData?.username) {
-          const today = new Date().toISOString().split('T')[0];
-          const usageRef = doc(db, 'artifacts', appId, 'public', 'data', 'usages', `${today}_${userData.username}`);
-          await setDoc(usageRef, { count: increment(1), date: today, username: userData.username }, { merge: true });
-        }
-      } else {
-         throw new Error("AI mengembalikan respon kosong.");
-      }
-
-    } catch (error) {
-      console.error("Detail Error AI:", error);
-      setResult("");
-      setFormError(`Gagal menyusun dokumen: ${error.message || "Periksa API Key atau koneksi internet Anda."}`);
-    } finally {
-      setIsGenerating(false);
-    }
-  
-    if (!checkPlanValidity()) {
       setLimitError(true);
       return;
     }
@@ -1021,9 +960,11 @@ try {
       return;
     }
 
+    setFormError("");
+    setLimitError(false);
     setIsGenerating(true);
     setMode('preview');
-    setResult("Memulai proses AI... Mohon tunggu sebentar...");
+    setResult("Sedang menyusun dokumen dengan AI terbaru... Mohon tunggu. Proses ini membutuhkan waktu sekitar 10-30 detik.");
     
     const totalMenit = parseInt(form.jumlahJP || 0) * parseInt(form.menitPerJP || 0);
     const textAlokasiWaktu = `${form.jumlahPertemuan} Pertemuan (Alokasi per pertemuan: ${form.jumlahJP} JP x ${form.menitPerJP} Menit = ${totalMenit} Menit)`;
@@ -1445,49 +1386,49 @@ try {
       </table>`;
     }
 
-    const payload = { 
-      contents: [{ parts: [{ text: userPrompt }] }], 
-      systemInstruction: { parts: [{ text: systemPrompt }] } 
-    };
+    try {
+      // Untuk menjalankan di lingkungan preview ini, kita biarkan apiKey kosong.
+      // Nanti saat Anda deploy ke Vercel, ubah baris ini menjadi:
+      // const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      const apiKey = ""; 
 
-    let aiText = null;
-    let attempt = 0;
-    const maxRetries = 5;
-    const delays = [1000, 2000, 4000, 8000, 16000];
+      // Pemanggilan Resmi menggunakan SDK Google Generative AI
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.5-flash", 
+        systemInstruction: systemPrompt 
+      });
 
-    while (attempt <= maxRetries && !aiText) {
-      try {
-        // Menggunakan import.meta.env.VITE_GEMINI_API_KEY yang benar
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`, { method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
+      const resultAI = await model.generateContent(userPrompt);
+      const text = resultAI.response.text();
+
+      if (text) {
+        setResult(text);
         
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        
-        const data = await res.json();
-        aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        
-        if (!aiText) throw new Error("Respons AI kosong.");
-      } catch (e) { 
-        if (attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, delays[attempt]));
-        } else {
-          setResult(`Terjadi kesalahan teknis saat menghubungkan ke AI. Mohon coba lagi. (${e.message})`);
+        // Potong Kuota Harian (Jika bukan demo)
+        if (!isDemo && userData?.username) {
+          const today = new Date().toISOString().split('T')[0];
+          const usageRef = doc(db, 'artifacts', appId, 'public', 'data', 'usages', `${today}_${userData.username}`);
+          await setDoc(usageRef, { count: increment(1), date: today, username: userData.username }, { merge: true });
         }
+      } else {
+         throw new Error("AI mengembalikan respon kosong.");
       }
-      attempt++;
-    }
 
-    if (aiText) {
-      setResult(aiText);
-      if (!isDemo) {
-        const today = new Date().toISOString().split('T')[0];
-        const usageRef = doc(db, 'artifacts', appId, 'public', 'data', 'usages', `${today}_${userData.username}`);
-        await setDoc(usageRef, { count: increment(1), date: today, username: userData.username }, { merge: true });
+    } catch (error) {
+      console.error("Detail Error AI:", error);
+      setResult("");
+      let errorMsg = error.message || "Periksa API Key atau koneksi internet Anda.";
+      
+      // Menyesuaikan Pesan Kesalahan Khusus jika Kunci Bocor
+      if (errorMsg.includes("403") || errorMsg.includes("API key not valid") || errorMsg.includes("leaked")) {
+        errorMsg = "API Key lama Anda telah diblokir otomatis oleh Google karena terdeteksi bocor di tempat publik. Silakan hapus kunci lama di Google AI Studio, buat API Key baru, lalu update variabel VITE_GEMINI_API_KEY di Vercel Anda dan Deploy ulang.";
       }
+      
+      setFormError(`Gagal menyusun dokumen: ${errorMsg}`);
+    } finally {
+      setIsGenerating(false);
     }
-    setIsGenerating(false);
   };
 
   const saveToFirebase = async () => {
@@ -2518,7 +2459,7 @@ const AdminGallery = () => {
             </div>
             <h3 className="font-black text-white text-sm px-2 uppercase line-clamp-1">{item.title}</h3>
             <p className="text-slate-400 text-[10px] font-bold px-2 mt-1 uppercase line-clamp-2 mb-4">{item.desc}</p>
-            <div className="mt-autoa pt-2 border-t border-blue-500/30 px-2 flex justify-end">
+            <div className="mt-auto pt-2 border-t border-blue-500/30 px-2 flex justify-end">
               <button onClick={() => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gallery', item.id))} className="text-red-400 hover:text-red-500 transition-colors"><Trash2 size={16}/></button>
             </div>
           </div>
