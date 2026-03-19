@@ -65,12 +65,12 @@ import {
 // --- INITIALIZATION ---
 // --- INITIALIZATION ---
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyAXGHhWmpP0V_HDYpTktKHk42yZZyPCFvw",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "chrisly-edu-db.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "chrisly-edu-db",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "chrisly-edu-db.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_SENDER_ID || "1068648356855",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:1068648356855:web:ae3ed8ee3f140390d9acf2"
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
