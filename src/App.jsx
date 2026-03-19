@@ -941,7 +941,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     try {
       // 2. Hubungkan ke Gemini menggunakan Kunci Rahasia dari Vercel
       const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
       // 3. Merakit Prompt dari Form Input
       const profilAktif = Object.entries(form.profilPelajar)
