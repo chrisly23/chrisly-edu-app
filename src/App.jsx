@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
