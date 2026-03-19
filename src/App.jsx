@@ -65,12 +65,12 @@ import {
 // --- INITIALIZATION ---
 // --- INITIALIZATION ---
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyAXGHhWmpP0V_HDYpTktKHk42yZZyPCFvw",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "chrisly-edu-db.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "chrisly-edu-db",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "chrisly-edu-db.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_SENDER_ID || "1068648356855",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:1068648356855:web:ae3ed8ee3f140390d9acf2"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -1456,9 +1456,9 @@ try {
     const delays = [1000, 2000, 4000, 8000, 16000];
 
     while (attempt <= maxRetries && !aiText) {
-      try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-          method: 'POST',
+      try {
+        // Menggunakan import.meta.env.VITE_GEMINI_API_KEY yang benar
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`, { method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
