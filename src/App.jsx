@@ -64,12 +64,12 @@ import {
 
 // --- INITIALIZATION ---
 const firebaseConfig = {
-  apiKey: "AIzaSyAXGHhWmpP0V_HDYpTktKHk42yZZyPCFvw",
-  authDomain: "chrisly-edu-db.firebaseapp.com",
-  projectId: "chrisly-edu-db",
-  storageBucket: "chrisly-edu-db.firebasestorage.app",
-  messagingSenderId: "1068648356855",
-  appId: "1:1068648356855:web:ae3ed8ee3f140390d9acf2"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyAXGHhWmpP0V_HDYpTktKHk42yZZyPCFvw",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "chrisly-edu-db.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "chrisly-edu-db",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "chrisly-edu-db.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_SENDER_ID || "1068648356855",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:1068648356855:web:ae3ed8ee3f140390d9acf2"
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -157,83 +157,76 @@ const compressImage = (file, maxWidth = 600, quality = 0.5) => {
   });
 };
 
-// --- MARKDOWN RENDERER (STABILIZED) ---
-// --- MARKDOWN RENDERER (SUPER STABIL) ---
-// --- MARKDOWN RENDERER (VERSI STABIL & RINGAN) ---
+// --- MARKDOWN RENDERER ---
 const renderMarkdown = (text) => {
   if (!text) return "";
   let lines = text.split('\n');
   let htmlOutput = [];
   let inTable = false;
-  let isHeaderRow = false;
+  let tableRows = [];
   
-  const processText = (str) => {
+  const processBasic = (str) => {
     return str
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/### (.*?)$/gm, '<h3 class="text-lg font-bold mt-6 mb-3 border-b pb-2">$1</h3>')
       .replace(/## (.*?)$/gm, '<h2 class="text-xl font-black mt-8 mb-4 border-b-2 pb-2">$1</h2>')
-      .replace(/# (.*?)$/gm, '<h1 class="text-2xl font-black mt-8 mb-6 uppercase text-center">$1</h1>')
-      .replace(/^- (.*)$/gm, '<li class="ml-4 mb-1 list-none flex gap-2"><span class="text-[#FF8C00]">•</span> <span>$1</span></li>')
-      .replace(/^[0-9]+\. (.*)$/gm, '<li class="ml-4 mb-1 font-medium">$1</li>');
+      .replace(/# (.*?)$/gm, '<h1 class="text-2xl font-black mt-8 mb-6 uppercase text-center">$1</h1>');
   };
 
-  for (let i = 0; i < lines.length; i++) {
-    let line = lines[i].trim();
+  lines.forEach((line) => {
+    let trimmed = line.trim();
 
-    // Abaikan garis pemisah tabel Markdown (|---|---|)
-    if (line.match(/^\|?[\s\-\:|]+\|?$/) && line.includes('-') && line.includes('|')) {
-        continue;
+    if (trimmed.startsWith('|') && !trimmed.endsWith('|')) {
+       trimmed = trimmed + '|';
     }
 
-    // Deteksi baris tabel (langsung render agar streaming tidak macet)
-    if (line.startsWith('|') || (line.includes('|') && !line.startsWith('<') && !line.startsWith('#'))) {
-        if (!inTable) {
-            htmlOutput.push('<div class="my-6 overflow-x-auto"><table class="w-full border-collapse text-sm">');
-            inTable = true;
-            isHeaderRow = true;
-        }
-        
-        let cleanLine = line;
-        if (cleanLine.startsWith('|')) cleanLine = cleanLine.substring(1);
-        if (cleanLine.endsWith('|')) cleanLine = cleanLine.substring(0, cleanLine.length - 1);
-        
-        let cells = cleanLine.split('|');
-        htmlOutput.push('<tr>');
-        cells.forEach(cell => {
-            let tag = isHeaderRow ? 'th' : 'td';
-            let css = isHeaderRow 
-                ? 'border p-3 text-left font-black uppercase text-xs bg-slate-50 text-slate-700' 
-                : 'border p-3 text-left font-medium align-top';
-            htmlOutput.push(`<${tag} class="${css}">${processText(cell.trim())}</${tag}>`);
+    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+      if (!inTable) inTable = true;
+      if (!trimmed.includes('---')) {
+        const cells = trimmed.split('|').filter((_, i, arr) => i > 0 && i < arr.length - 1);
+        tableRows.push(cells);
+      }
+    } else {
+      if (inTable) {
+        let tableHtml = '<div class="my-6 overflow-x-auto rounded-xl"><table class="w-full border-collapse text-sm">';
+        tableRows.forEach((row, idx) => {
+          tableHtml += `<tr>`;
+          row.forEach(cell => {
+            const tag = idx === 0 ? 'th' : 'td';
+            tableHtml += `<${tag} class="border p-3 text-left ${idx === 0 ? 'font-black uppercase text-xs bg-slate-50 text-slate-700' : 'font-medium'}">${processBasic(cell.trim())}</${tag}>`;
+          });
+          tableHtml += '</tr>';
         });
-        htmlOutput.push('</tr>');
-        isHeaderRow = false;
-    } 
-    else {
-        // Otomatis keluar dari tabel jika menemukan baris teks biasa
-        if (inTable) {
-            htmlOutput.push('</table></div>');
-            inTable = false;
-        }
-        
-        if (line === '') {
-            htmlOutput.push('<br/>');
-        } else if (line.startsWith('<')) {
-            htmlOutput.push(line);
-        } else {
-            let processed = processText(line);
-            if (processed.startsWith('<li')) {
-                htmlOutput.push(`<ul class="m-0 p-0">${processed}</ul>`);
-            } else {
-                htmlOutput.push(`<p class="mb-2 leading-relaxed text-justify">${processed}</p>`);
-            }
-        }
+        tableHtml += '</table></div>';
+        htmlOutput.push(tableHtml);
+        inTable = false;
+        tableRows = [];
+      }
+      if (trimmed === "") {
+        htmlOutput.push('<br/>');
+      } else if (trimmed.startsWith('<img') || trimmed.startsWith('<table') || trimmed.startsWith('</table') || trimmed.startsWith('<tr') || trimmed.startsWith('<td') || trimmed.startsWith('</tr') || trimmed.startsWith('</td')) {
+        htmlOutput.push(line);
+      } else {
+        htmlOutput.push(`<p class="mb-2 leading-relaxed text-justify">${processBasic(line)}</p>`);
+      }
     }
+  });
+
+  if (inTable) {
+     let tableHtml = '<div class="my-6 overflow-x-auto rounded-xl"><table class="w-full border-collapse text-sm">';
+     tableRows.forEach((row, idx) => {
+        tableHtml += `<tr>`;
+        row.forEach(cell => {
+           const tag = idx === 0 ? 'th' : 'td';
+           tableHtml += `<${tag} class="border p-3 text-left ${idx === 0 ? 'font-black uppercase text-xs bg-slate-50 text-slate-700' : 'font-medium'}">${processBasic(cell.trim())}</${tag}>`;
+        });
+        tableHtml += '</tr>';
+     });
+     tableHtml += '</table></div>';
+     htmlOutput.push(tableHtml);
   }
-  
-  if (inTable) htmlOutput.push('</table></div>');
-  
+
   return htmlOutput.join('');
 };
 
@@ -989,7 +982,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     setLimitError(false);
     setIsGenerating(true);
     setMode('preview');
-    setResult(""); // Dikosongkan di awal agar loading awal muncul
+    setResult(""); // Dikosongkan di awal agar AI mengetik dari kosong
     
     const totalMenit = parseInt(form.jumlahJP || 0) * parseInt(form.menitPerJP || 0);
     const textAlokasiWaktu = `${form.jumlahPertemuan} Pertemuan (Alokasi per pertemuan: ${form.jumlahJP} JP x ${form.menitPerJP} Menit = ${totalMenit} Menit)`;
@@ -999,12 +992,14 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     const profilAktif = Object.entries(form.profilPelajar).filter(([k,v]) => v).map(([k]) => k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())).join(', ');
     const logoImg = form.logoSekolah ? `<div style="text-align: center; margin-bottom: 20px;"><img src="${form.logoSekolah}" width="100" /></div>` : '';
     
-    let systemPrompt = `Anda adalah seorang Asisten Ahli Kurikulum Merdeka dan Dosen Pendidikan. Tugas Anda menyusun dokumen ${type.toUpperCase()} dengan SANGAT DETAIL, KOMPREHENSIF, dan SIAP PAKAI. Jabarkan semua poin secara mendalam, jangan diringkas. Hasilkan dokumen secara UTUH dari awal hingga akhir tanpa terpotong.`;
+    let systemPrompt = `Anda adalah seorang Master Asisten Ahli Kurikulum Merdeka dan Dosen Ahli Pendidikan yang sangat profesional. Anda bertugas menyusun dokumen ${type.toUpperCase()} dengan kualitas TERBAIK, SANGAT DETAIL, KOMPREHENSIF, dan SIAP PAKAI tanpa perlu banyak revisi oleh guru. Dilarang keras meringkas, melewati bagian penting, atau menggunakan kata-kata seperti 'dan seterusnya' atau 'dll'. Semua poin harus dijabarkan dengan mendalam, berbobot, dan menggunakan Bahasa Indonesia baku yang akademis namun praktis.`;
     
     if (type === 'slide') {
-      systemPrompt += ` WAJIB gunakan struktur teks berpoin. Judul slide WAJIB diawali dengan double hashtag (## Judul Slide). Berikan catatan pembicara yang detail.`;
+      systemPrompt += `WAJIB gunakan struktur teks berpoin. Judul slide WAJIB diawali dengan double hashtag (## Judul Slide). Berikan teknik penceritaan (storytelling) yang kuat di materi.`;
+    } else if (type === 'rpm' || type === 'modul' || type === 'rpl' || type === 'jobsheet' || type === 'kokurikuler' || type === 'analisis_cp') {
+      systemPrompt += `Dokumen ini adalah ${type === 'rpm' ? 'Rencana Pembelajaran Mendalam (RPM)' : type === 'rpl' ? 'Rencana Pelaksanaan Layanan (RPL)' : type === 'jobsheet' ? 'Job Sheet (Lembar Kerja Praktik)' : type === 'kokurikuler' ? 'Modul Projek Kokurikuler (P5)' : type === 'analisis_cp' ? 'Analisis Capaian Pembelajaran (TP & ATP)' : 'Rencana Pelaksanaan Pembelajaran (RPP)'}. WAJIB menggunakan format Markdown yang rapi. Gunakan tag HTML <table> tanpa border untuk bagian pengesahan tanda tangan di akhir agar rapi. Pastikan semua tabel yang dibuat panjang, detail, dan tidak terpotong.`;
     } else {
-      systemPrompt += ` WAJIB menggunakan format Markdown standar. Untuk membuat tabel, gunakan format tabel Markdown (menggunakan tanda pipa | ). JANGAN menggunakan tag HTML <table> untuk isi materi karena dapat merusak sistem. Tag HTML <table> HANYA diizinkan dipakai di paling akhir dokumen untuk format kolom tanda tangan pengesahan. Jika Anda perlu membuat baris baru di dalam sel tabel Markdown, cukup gunakan tag <br>.`;
+      systemPrompt += `WAJIB menggunakan format TABEL MARKDOWN yang rapi untuk bagian isi. Bahasa Indonesia formal.`;
     }
     
     let userPrompt = "";
@@ -1410,28 +1405,32 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     }
 
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      let apiKey = "";
+      try {
+        if (typeof import.meta !== 'undefined' && import.meta.env) {
+          apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
+        }
+      } catch (e) {
+        console.warn("import.meta not available");
+      }
 
       if (!apiKey) {
         throw new Error("Kunci API VITE_GEMINI_API_KEY tidak ditemukan di environment Vercel.");
       }
 
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.5-flash",
-        generationConfig: {
-          temperature: 0.7, 
-          maxOutputTokens: 8192, 
-        }
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+      // PENERAPAN STREAMING 
+      const resultAI = await model.generateContentStream({
+        contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }]
       });
-      // PENERAPAN STREAMING
-      const resultAI = await model.generateContentStream(systemPrompt + "\n\n" + userPrompt);
 
       let fullText = "";
       for await (const chunk of resultAI.stream) {
         const chunkText = chunk.text();
         fullText += chunkText;
-        setResult(fullText); // Mengetik progresif ke layar
+        setResult(fullText); // Mengetik progresif
       }
 
       if (fullText) {
@@ -2188,7 +2187,7 @@ ${logoImg}
             disabled={isGenerating || (!isDemo && usageCount >= (PLANS[userData?.plan || 'plus']?.limit || 5)) || (type === 'lkpd' && !form.statusPG && !form.statusEsai)} 
             className={`w-full mt-8 py-4 rounded-2xl font-black uppercase text-[12px] tracking-widest shadow-xl flex items-center justify-center gap-2 transition-all ${!isDemo && usageCount >= (PLANS[userData?.plan || 'plus']?.limit || 5) || (type === 'lkpd' && !form.statusPG && !form.statusEsai) ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none' : 'bg-[#FF8C00] text-white hover:bg-[#FFA726] hover:shadow-[0_0_15px_rgba(255,140,0,0.4)] active:scale-[0.98]'}`}
           >
-            {isGenerating && !result ? <Loader2 className="animate-spin w-5 h-5"/> : <><FileCode size={18}/> {showPreviewMode ? `Buat Dokumen` : 'Proses Ulang AI'}</>}
+            {isGenerating ? <Loader2 className="animate-spin w-5 h-5"/> : <><FileCode size={18}/> {showPreviewMode ? `Buat Dokumen` : 'Proses Ulang AI'}</>}
           </button>
         </div>
       </div>
@@ -2219,7 +2218,7 @@ ${logoImg}
                       <button onClick={() => handleExportPPTX(`${type.toUpperCase()} - ${form.mapel}`, result, form.temaDokumen)} className="bg-[#FF8C00] px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-[0_0_10px_rgba(255,140,0,0.4)] hover:bg-[#FFA726] transition-all text-white"><Download size={14}/> PPTX</button>
                     ) : (
                       <>
-                        <button onClick={() => handleExportDoc(`${type.toUpperCase()} - ${form.mapel}`, result, { themeId: form.temaDokumen, orientation: form.orientasi, paperSize: form.ukuranKertas })} className="bg-[#3B82F6] text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase shadow-[0_0_15px_rgba(59,130,246,0.4)] hover:bg-blue-500 transition-all text-white"><Download size={14}/> WORD</button>
+                        <button onClick={() => handleExportDoc(`${type.toUpperCase()} - ${form.mapel}`, result, { themeId: form.temaDokumen, orientation: form.orientasi, paperSize: form.ukuranKertas })} className="bg-[#3B82F6] px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-[0_0_10px_rgba(59,130,246,0.4)] hover:bg-blue-500 transition-all text-white"><Download size={14}/> WORD</button>
                         {type === 'analisis_cp' && (
                           <button onClick={() => handleExportExcel(`${type.toUpperCase()} - ${form.mapel}`, result)} className="bg-emerald-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:bg-emerald-500 transition-all text-white"><Download size={14}/> EXCEL</button>
                         )}
