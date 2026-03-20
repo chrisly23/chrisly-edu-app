@@ -997,7 +997,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     if (type === 'slide') {
       systemPrompt += `WAJIB gunakan struktur teks berpoin. Judul slide WAJIB diawali dengan double hashtag (## Judul Slide). Berikan teknik penceritaan (storytelling) yang kuat di materi.`;
     } else if (type === 'rpm' || type === 'modul' || type === 'rpl' || type === 'jobsheet' || type === 'kokurikuler' || type === 'analisis_cp') {
-      systemPrompt += `Dokumen ini adalah ${type === 'rpm' ? 'Rencana Pembelajaran Mendalam (RPM)' : type === 'rpl' ? 'Rencana Pelaksanaan Layanan (RPL)' : type === 'jobsheet' ? 'Job Sheet (Lembar Kerja Praktik)' : type === 'kokurikuler' ? 'Modul Projek Kokurikuler (P5)' : type === 'analisis_cp' ? 'Analisis Capaian Pembelajaran (TP & ATP)' : 'Rencana Pelaksanaan Pembelajaran (RPP)'}. WAJIB menggunakan format Markdown yang rapi. Gunakan tag HTML <table> tanpa border untuk bagian pengesahan tanda tangan di akhir agar rapi. Pastikan semua tabel yang dibuat panjang, detail, dan tidak terpotong.`;
+      systemPrompt += `Dokumen ini adalah ${type === 'rpm' ? 'Rencana Pembelajaran Mendalam (RPM)' : type === 'rpl' ? 'Rencana Pelaksanaan Layanan (RPL)' : type === 'jobsheet' ? 'Job Sheet (Lembar Kerja Praktik)' : type === 'kokurikuler' ? 'Modul Projek Kokurikuler (P5)' : type === 'analisis_cp' ? 'Analisis Capaian Pembelajaran (TP & ATP)' : 'Rencana Pelaksanaan Pembelajaran (RPP)'}. WAJIB menggunakan format Markdown yang rapi. Gunakan tag HTML <table> tanpa border untuk bagian pengesahan tanda tangan di akhir agar rapi. SANGAT PENTING: JANGAN PERNAH menekan tombol Enter/membuat baris baru di dalam sel tabel Markdown! Jika butuh baris baru/poin di dalam sel tabel, WAJIB ketikkan tag <br/> agar tabel tidak hancur.`;
     } else {
       systemPrompt += `WAJIB menggunakan format TABEL MARKDOWN yang rapi untuk bagian isi. Bahasa Indonesia formal.`;
     }
@@ -1419,8 +1419,10 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
       }
 
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.5-flash",
+        generationConfig: { maxOutputTokens: 8192 } 
+      });
       // PENERAPAN STREAMING 
       const resultAI = await model.generateContentStream({
         contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }]
