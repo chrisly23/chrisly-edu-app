@@ -64,12 +64,12 @@ import {
 
 // --- INITIALIZATION ---
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyAXGHhWmpP0V_HDYpTktKHk42yZZyPCFvw",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "chrisly-edu-db.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "chrisly-edu-db",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "chrisly-edu-db.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_SENDER_ID || "1068648356855",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:1068648356855:web:ae3ed8ee3f140390d9acf2"
+  apiKey: "AIzaSyAXGHhWmpP0V_HDYpTktKHk42yZZyPCFvw",
+  authDomain: "chrisly-edu-db.firebaseapp.com",
+  projectId: "chrisly-edu-db",
+  storageBucket: "chrisly-edu-db.firebasestorage.app",
+  messagingSenderId: "1068648356855",
+  appId: "1:1068648356855:web:ae3ed8ee3f140390d9acf2"
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -158,7 +158,6 @@ const compressImage = (file, maxWidth = 600, quality = 0.5) => {
 };
 
 // --- MARKDOWN RENDERER ---
-// --- MARKDOWN RENDERER ---
 const renderMarkdown = (text) => {
   if (!text) return "";
   let lines = text.split('\n');
@@ -172,60 +171,72 @@ const renderMarkdown = (text) => {
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/### (.*?)$/gm, '<h3 class="text-lg font-bold mt-6 mb-3 border-b pb-2">$1</h3>')
       .replace(/## (.*?)$/gm, '<h2 class="text-xl font-black mt-8 mb-4 border-b-2 pb-2">$1</h2>')
-      .replace(/# (.*?)$/gm, '<h1 class="text-2xl font-black mt-8 mb-6 uppercase text-center">$1</h1>');
-  };
-
-  const flushTable = () => {
-    if (tableRows.length > 0) {
-      let tableHtml = '<div class="my-6 overflow-x-auto rounded-xl"><table class="w-full border-collapse text-sm">';
-      tableRows.forEach((row, idx) => {
-        tableHtml += `<tr>`;
-        row.forEach(cell => {
-          const tag = idx === 0 ? 'th' : 'td';
-          tableHtml += `<${tag} class="border p-3 text-left ${idx === 0 ? 'font-black uppercase text-xs bg-slate-50 text-slate-700' : 'font-medium'}">${processBasic(cell.trim())}</${tag}>`;
-        });
-        tableHtml += '</tr>';
-      });
-      tableHtml += '</table></div>';
-      htmlOutput.push(tableHtml);
-      tableRows = [];
-    }
-    inTable = false;
+      .replace(/# (.*?)$/gm, '<h1 class="text-2xl font-black mt-8 mb-6 uppercase text-center">$1</h1>')
+      .replace(/^- (.*)$/gm, '<li class="ml-4 mb-1 list-none flex gap-2"><span class="text-[#FF8C00]">•</span> <span>$1</span></li>')
+      .replace(/^[0-9]+\. (.*)$/gm, '<li class="ml-4 mb-1 font-medium">$1</li>');
   };
 
   lines.forEach((line) => {
     let trimmed = line.trim();
 
-    // Deteksi tabel yang lebih stabil
-    if (trimmed.startsWith('|')) {
+    if (trimmed.startsWith('|') && !trimmed.endsWith('|')) {
+       trimmed = trimmed + '|';
+    }
+
+    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
       if (!inTable) inTable = true;
-      // Abaikan baris pemisah tabel seperti |---|---|
-      if (!trimmed.match(/^\|[\s\-\:|]+\|$/)) {
-        // Ambil isi sel dan bersihkan
-        const cells = trimmed.split('|').map(c => c.trim());
-        // Buang elemen kosong di awal dan akhir akibat split separator |
-        if (cells[0] === '') cells.shift();
-        if (cells[cells.length - 1] === '') cells.pop();
-        
-        if (cells.length > 0) tableRows.push(cells);
+      if (!trimmed.includes('---')) {
+        const cells = trimmed.split('|').filter((_, i, arr) => i > 0 && i < arr.length - 1);
+        tableRows.push(cells);
       }
     } else {
-      if (inTable) flushTable();
-      
+      if (inTable) {
+        let tableHtml = '<div class="my-6 overflow-x-auto rounded-xl"><table class="w-full border-collapse text-sm">';
+        tableRows.forEach((row, idx) => {
+          tableHtml += `<tr>`;
+          row.forEach(cell => {
+            const tag = idx === 0 ? 'th' : 'td';
+            tableHtml += `<${tag} class="border p-3 text-left ${idx === 0 ? 'font-black uppercase text-xs bg-slate-50 text-slate-700' : 'font-medium'}">${processBasic(cell.trim())}</${tag}>`;
+          });
+          tableHtml += '</tr>';
+        });
+        tableHtml += '</table></div>';
+        htmlOutput.push(tableHtml);
+        inTable = false;
+        tableRows = [];
+      }
       if (trimmed === "") {
         htmlOutput.push('<br/>');
       } else if (trimmed.startsWith('<img') || trimmed.startsWith('<table') || trimmed.startsWith('</table') || trimmed.startsWith('<tr') || trimmed.startsWith('<td') || trimmed.startsWith('</tr') || trimmed.startsWith('</td')) {
         htmlOutput.push(line);
       } else {
-        htmlOutput.push(`<p class="mb-2 leading-relaxed text-justify">${processBasic(line)}</p>`);
+        const processedLine = processBasic(line);
+        if (processedLine.startsWith('<li')) {
+           htmlOutput.push(`<ul class="m-0 p-0">${processedLine}</ul>`);
+        } else {
+           htmlOutput.push(`<p class="mb-2 leading-relaxed text-justify">${processedLine}</p>`);
+        }
       }
     }
   });
 
-  if (inTable) flushTable();
+  if (inTable) {
+     let tableHtml = '<div class="my-6 overflow-x-auto rounded-xl"><table class="w-full border-collapse text-sm">';
+     tableRows.forEach((row, idx) => {
+        tableHtml += `<tr>`;
+        row.forEach(cell => {
+           const tag = idx === 0 ? 'th' : 'td';
+           tableHtml += `<${tag} class="border p-3 text-left ${idx === 0 ? 'font-black uppercase text-xs bg-slate-50 text-slate-700' : 'font-medium'}">${processBasic(cell.trim())}</${tag}>`;
+        });
+        tableHtml += '</tr>';
+     });
+     tableHtml += '</table></div>';
+     htmlOutput.push(tableHtml);
+  }
 
   return htmlOutput.join('');
 };
+
 // --- EXPORT FUNCTIONS ---
 const handleExportDoc = (title, content, options = {}) => {
   const { themeId = 'profesional', orientation = 'Portrait', paperSize = 'A4' } = options;
@@ -878,7 +889,7 @@ const Sidebar = ({ role, activeView, setView, activeGenerator, setActiveGenerato
 const DashboardHome = ({ setView, setActiveGenerator, setIsSidebarOpen }) => (
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
     {GENERATOR_TOOLS.map(item => (
-      <div key={item.id} onClick={()=>{setActiveGenerator(item.id); setView('generator'); if(window.innerWidth < 768) setIsSidebarOpen(false);}} className="bg-[#1E3A8A]/40 backdrop-blur-md p-6 lg:p-8 rounded-[2.5rem] border border-blue-500/30 shadow-sm hover:shadow-[0_0_20px_rgba(255,140,0,0.3)] hover:border-[#FF8C00] hover:-translate-y-1 transition-all cursor-pointer group">
+      <div key={item.id} onClick={()=>{setActiveGenerator(item.id); setView('generator'); setIsSidebarOpen(false);}} className="bg-[#1E3A8A]/40 backdrop-blur-md p-6 lg:p-8 rounded-[2.5rem] border border-blue-500/30 shadow-sm hover:shadow-[0_0_20px_rgba(255,140,0,0.3)] hover:border-[#FF8C00] hover:-translate-y-1 transition-all cursor-pointer group">
         <div className={`w-14 h-14 ${item.color} rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:rotate-6 shadow-lg`}><item.icon size={28}/></div>
         <h3 className="font-black text-slate-100 text-lg mb-2 leading-tight">{item.title}</h3>
         <p className="text-slate-300 text-xs leading-relaxed font-medium">{item.desc}</p>
@@ -978,7 +989,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     setLimitError(false);
     setIsGenerating(true);
     setMode('preview');
-    setResult(""); // Dikosongkan di awal agar AI mengetik dari kosong
+    setResult(""); // Dikosongkan di awal agar loading awal muncul
     
     const totalMenit = parseInt(form.jumlahJP || 0) * parseInt(form.menitPerJP || 0);
     const textAlokasiWaktu = `${form.jumlahPertemuan} Pertemuan (Alokasi per pertemuan: ${form.jumlahJP} JP x ${form.menitPerJP} Menit = ${totalMenit} Menit)`;
@@ -1401,14 +1412,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     }
 
     try {
-      let apiKey = "";
-      try {
-        if (typeof import.meta !== 'undefined' && import.meta.env) {
-          apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
-        }
-      } catch (e) {
-        console.warn("import.meta not available");
-      }
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
       if (!apiKey) {
         throw new Error("Kunci API VITE_GEMINI_API_KEY tidak ditemukan di environment Vercel.");
@@ -1417,16 +1421,14 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-      // PENERAPAN STREAMING 
-      const resultAI = await model.generateContentStream({
-        contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }]
-      });
+      // PENERAPAN STREAMING
+      const resultAI = await model.generateContentStream(systemPrompt + "\n\n" + userPrompt);
 
       let fullText = "";
       for await (const chunk of resultAI.stream) {
         const chunkText = chunk.text();
         fullText += chunkText;
-        setResult(fullText); // Mengetik progresif
+        setResult(fullText); // Mengetik progresif ke layar
       }
 
       if (fullText) {
@@ -1835,9 +1837,8 @@ ${logoImg}
              '--theme-title': `#${currentTheme.titleCol}`,
              '--theme-body': `#${currentTheme.bodyCol}`,
              width: '100%',
-             margin: '0 auto',
-             maxWidth: form.orientasi === 'Landscape' ? '1123px' : '850px', // Proporsi A4 sesungguhnya
-             minHeight: form.orientasi === 'Landscape' ? '794px' : '1100px'
+             maxWidth: form.orientasi === 'Landscape' ? '100%' : '850px',
+             minHeight: form.orientasi === 'Landscape' ? '600px' : '1100px'
            }}
            onContextMenu={isDemo ? (e) => e.preventDefault() : undefined}
            onDragStart={isDemo ? (e) => e.preventDefault() : undefined}
@@ -2184,7 +2185,7 @@ ${logoImg}
             disabled={isGenerating || (!isDemo && usageCount >= (PLANS[userData?.plan || 'plus']?.limit || 5)) || (type === 'lkpd' && !form.statusPG && !form.statusEsai)} 
             className={`w-full mt-8 py-4 rounded-2xl font-black uppercase text-[12px] tracking-widest shadow-xl flex items-center justify-center gap-2 transition-all ${!isDemo && usageCount >= (PLANS[userData?.plan || 'plus']?.limit || 5) || (type === 'lkpd' && !form.statusPG && !form.statusEsai) ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none' : 'bg-[#FF8C00] text-white hover:bg-[#FFA726] hover:shadow-[0_0_15px_rgba(255,140,0,0.4)] active:scale-[0.98]'}`}
           >
-            {isGenerating ? <Loader2 className="animate-spin w-5 h-5"/> : <><FileCode size={18}/> {showPreviewMode ? `Buat Dokumen` : 'Proses Ulang AI'}</>}
+            {isGenerating && !result ? <Loader2 className="animate-spin w-5 h-5"/> : <><FileCode size={18}/> {showPreviewMode ? `Buat Dokumen` : 'Proses Ulang AI'}</>}
           </button>
         </div>
       </div>
@@ -2215,7 +2216,7 @@ ${logoImg}
                       <button onClick={() => handleExportPPTX(`${type.toUpperCase()} - ${form.mapel}`, result, form.temaDokumen)} className="bg-[#FF8C00] px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-[0_0_10px_rgba(255,140,0,0.4)] hover:bg-[#FFA726] transition-all text-white"><Download size={14}/> PPTX</button>
                     ) : (
                       <>
-                        <button onClick={() => handleExportDoc(`${type.toUpperCase()} - ${form.mapel}`, result, { themeId: form.temaDokumen, orientation: form.orientasi, paperSize: form.ukuranKertas })} className="bg-[#3B82F6] px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-[0_0_10px_rgba(59,130,246,0.4)] hover:bg-blue-500 transition-all text-white"><Download size={14}/> WORD</button>
+                        <button onClick={() => handleExportDoc(`${type.toUpperCase()} - ${form.mapel}`, result, { themeId: form.temaDokumen, orientation: form.orientasi, paperSize: form.ukuranKertas })} className="bg-[#3B82F6] text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase shadow-[0_0_15px_rgba(59,130,246,0.4)] hover:bg-blue-500 transition-all text-white"><Download size={14}/> WORD</button>
                         {type === 'analisis_cp' && (
                           <button onClick={() => handleExportExcel(`${type.toUpperCase()} - ${form.mapel}`, result)} className="bg-emerald-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:bg-emerald-500 transition-all text-white"><Download size={14}/> EXCEL</button>
                         )}
