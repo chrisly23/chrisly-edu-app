@@ -878,7 +878,7 @@ const Sidebar = ({ role, activeView, setView, activeGenerator, setActiveGenerato
 const DashboardHome = ({ setView, setActiveGenerator, setIsSidebarOpen }) => (
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
     {GENERATOR_TOOLS.map(item => (
-      <div key={item.id} onClick={()=>{setActiveGenerator(item.id); setView('generator'); setIsSidebarOpen(false);}} className="bg-[#1E3A8A]/40 backdrop-blur-md p-6 lg:p-8 rounded-[2.5rem] border border-blue-500/30 shadow-sm hover:shadow-[0_0_20px_rgba(255,140,0,0.3)] hover:border-[#FF8C00] hover:-translate-y-1 transition-all cursor-pointer group">
+      <div key={item.id} onClick={()=>{setActiveGenerator(item.id); setView('generator'); if(window.innerWidth < 768) setIsSidebarOpen(false);}} className="bg-[#1E3A8A]/40 backdrop-blur-md p-6 lg:p-8 rounded-[2.5rem] border border-blue-500/30 shadow-sm hover:shadow-[0_0_20px_rgba(255,140,0,0.3)] hover:border-[#FF8C00] hover:-translate-y-1 transition-all cursor-pointer group">
         <div className={`w-14 h-14 ${item.color} rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:rotate-6 shadow-lg`}><item.icon size={28}/></div>
         <h3 className="font-black text-slate-100 text-lg mb-2 leading-tight">{item.title}</h3>
         <p className="text-slate-300 text-xs leading-relaxed font-medium">{item.desc}</p>
