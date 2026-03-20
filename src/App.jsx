@@ -1419,7 +1419,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
       const model = genAI.getGenerativeModel({ 
         model: "gemini-2.5-flash",
         generationConfig: {
-          temperature: 0.3, 
+          temperature: 0.7, 
           maxOutputTokens: 8192, 
         }
       });
