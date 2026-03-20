@@ -64,12 +64,12 @@ import {
 
 // --- INITIALIZATION ---
 const firebaseConfig = {
-  apiKey: "AIzaSyAXGHhWmpP0V_HDYpTktKHk42yZZyPCFvw",
-  authDomain: "chrisly-edu-db.firebaseapp.com",
-  projectId: "chrisly-edu-db",
-  storageBucket: "chrisly-edu-db.firebasestorage.app",
-  messagingSenderId: "1068648356855",
-  appId: "1:1068648356855:web:ae3ed8ee3f140390d9acf2"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyAXGHhWmpP0V_HDYpTktKHk42yZZyPCFvw",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "chrisly-edu-db.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "chrisly-edu-db",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "chrisly-edu-db.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_SENDER_ID || "1068648356855",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:1068648356855:web:ae3ed8ee3f140390d9acf2"
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -175,7 +175,12 @@ const renderMarkdown = (text) => {
   };
 
   lines.forEach((line) => {
-    const trimmed = line.trim();
+    let trimmed = line.trim();
+
+    if (trimmed.startsWith('|') && !trimmed.endsWith('|')) {
+       trimmed = trimmed + '|';
+    }
+
     if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
       if (!inTable) inTable = true;
       if (!trimmed.includes('---')) {
@@ -207,6 +212,21 @@ const renderMarkdown = (text) => {
       }
     }
   });
+
+  if (inTable) {
+     let tableHtml = '<div class="my-6 overflow-x-auto rounded-xl"><table class="w-full border-collapse text-sm">';
+     tableRows.forEach((row, idx) => {
+        tableHtml += `<tr>`;
+        row.forEach(cell => {
+           const tag = idx === 0 ? 'th' : 'td';
+           tableHtml += `<${tag} class="border p-3 text-left ${idx === 0 ? 'font-black uppercase text-xs bg-slate-50 text-slate-700' : 'font-medium'}">${processBasic(cell.trim())}</${tag}>`;
+        });
+        tableHtml += '</tr>';
+     });
+     tableHtml += '</table></div>';
+     htmlOutput.push(tableHtml);
+  }
+
   return htmlOutput.join('');
 };
 
@@ -452,7 +472,6 @@ const App = () => {
       console.error("Login Error: ", error);
       setMessage({ type: 'error', text: 'Gagal terhubung ke database. Coba lagi.' });
     } finally {
-      // INI YANG MEMBUAT LOADING BERHENTI APAPUN YANG TERJADI
       setLoading(false);
     }
   };
@@ -940,7 +959,6 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     }
   };
 
-  // FUNGSI GENERATE AI YANG SUDAH DIPERBAIKI (TIDAK ADA LOOP/FETCH GANDA)
   const generateAI = async () => {
     if (!isDemo && usageCount >= (PLANS[userData?.plan || 'plus']?.limit || 5)) {
       setLimitError(true);
@@ -964,7 +982,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     setLimitError(false);
     setIsGenerating(true);
     setMode('preview');
-    setResult("Sedang menyusun dokumen dengan AI terbaru... Mohon tunggu. Proses ini membutuhkan waktu sekitar 10-30 detik.");
+    setResult(""); // Dikosongkan di awal agar AI mengetik dari kosong
     
     const totalMenit = parseInt(form.jumlahJP || 0) * parseInt(form.menitPerJP || 0);
     const textAlokasiWaktu = `${form.jumlahPertemuan} Pertemuan (Alokasi per pertemuan: ${form.jumlahJP} JP x ${form.menitPerJP} Menit = ${totalMenit} Menit)`;
@@ -974,7 +992,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     const profilAktif = Object.entries(form.profilPelajar).filter(([k,v]) => v).map(([k]) => k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())).join(', ');
     const logoImg = form.logoSekolah ? `<div style="text-align: center; margin-bottom: 20px;"><img src="${form.logoSekolah}" width="100" /></div>` : '';
     
-    let systemPrompt = `Anda adalah seorang Master Asisten Ahli Kurikulum Merdeka dan Dosen Ahli Pendidikan yang sangat profesional. Anda bertugas menyusun dokumen ${type.toUpperCase()} dengan kualitas TERBAIK, SANGAT DETAIL, KOMPREHENSIF, dan SIAP PAKAI tanpa perlu banyak revisi oleh guru. Dilarang keras meringkas, melewati bagian penting, atau menggunakan kata-kata seperti 'dan seterusnya' atau 'dll'. Semua poin harus dijabarkan dengan mendalam, berbobot, dan menggunakan Bahasa Indonesia baku yang akademis namun praktis. `;
+    let systemPrompt = `Anda adalah seorang Master Asisten Ahli Kurikulum Merdeka dan Dosen Ahli Pendidikan yang sangat profesional. Anda bertugas menyusun dokumen ${type.toUpperCase()} dengan kualitas TERBAIK, SANGAT DETAIL, KOMPREHENSIF, dan SIAP PAKAI tanpa perlu banyak revisi oleh guru. Dilarang keras meringkas, melewati bagian penting, atau menggunakan kata-kata seperti 'dan seterusnya' atau 'dll'. Semua poin harus dijabarkan dengan mendalam, berbobot, dan menggunakan Bahasa Indonesia baku yang akademis namun praktis.`;
     
     if (type === 'slide') {
       systemPrompt += `WAJIB gunakan struktur teks berpoin. Judul slide WAJIB diawali dengan double hashtag (## Judul Slide). Berikan teknik penceritaan (storytelling) yang kuat di materi.`;
@@ -1360,7 +1378,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
       - **Karakteristik Pembelajaran:** [Jabarkan praktik pedagogis dengan model ${form.modelPembelajaran}, pemanfaatan teknologi digital, lingkungan belajar, dan kemitraan luar jika ada]
 
       ## 3. Pengalaman Belajar (Siklus Kognitif)
-      [PENTING: Jabarkan pengalaman belajar untuk SETIAP PERTEMUAN (Total: ${form.jumlahPertemuan} Pertemuan). Rangkaian aktivitas WAJIB mengandung 3 tahap utama: Tahap Memahami (Understanding), Tahap Mengaplikasi (Applying), dan Tahap Merefleksi (Reflecting). Seluruh tahap harus mengusung prinsip Berkesadaran (Mindful), Bermakna (Meaningful), dan Menggembirakan (Joyful). Buat TABEL TERPISAH PER PERTEMUAN berisi kolom: Tahap (Padukan Pendahuluan/Inti/Penutup ke dalam siklus Memahami/Mengaplikasi/Merefleksi), Uraian Aktivitas Guru & Siswa (sangat detail, aktif, tidak sekadar menghafal), dan Waktu (kolom paling kanan, total persis ${totalMenit} menit per tabel)]
+      [PENTING: Jabarkan pengalaman belajar untuk SETIAP PERTEMUAN (Total: ${form.jumlahPertemuan} Pertemuan). Rangkaian aktivitas WAJIB mengandung 3 tahap utama: Tahap Memahami (Understanding), Tahap Mengaplikasi (Applying), dan Tahap Merefleksi (Reflecting). Seluruh tahap harus mengusung prinsip Berkesadaran (Mindful), Bermakna (Meaningful), dan Menggembirakan (Joyful). Buat TABEL TERPISAH PER PERTEMUAN dengan format Markdown Sempurna berisi kolom: | Tahap | Uraian Aktivitas Guru & Siswa | Waktu | (total persis ${totalMenit} menit per tabel)]
 
       ## 4. Asesmen Pembelajaran
       [Uraikan strategi penilaian yang berkelanjutan:]
@@ -1387,24 +1405,35 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     }
 
     try {
-      // Untuk menjalankan di lingkungan preview ini, kita biarkan apiKey kosong.
-      // Nanti saat Anda deploy ke Vercel, ubah baris ini menjadi:
-      // const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      // Pemanggilan Resmi menggunakan SDK Google Generative AI
+      let apiKey = "";
+      try {
+        if (typeof import.meta !== 'undefined' && import.meta.env) {
+          apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
+        }
+      } catch (e) {
+        console.warn("import.meta not available");
+      }
+
+      if (!apiKey) {
+        throw new Error("Kunci API VITE_GEMINI_API_KEY tidak ditemukan di environment Vercel.");
+      }
+
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.5-flash", 
-        systemInstruction: systemPrompt 
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+      // PENERAPAN STREAMING 
+      const resultAI = await model.generateContentStream({
+        contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }]
       });
 
-      const resultAI = await model.generateContent(userPrompt);
-      const text = resultAI.response.text();
+      let fullText = "";
+      for await (const chunk of resultAI.stream) {
+        const chunkText = chunk.text();
+        fullText += chunkText;
+        setResult(fullText); // Mengetik progresif
+      }
 
-      if (text) {
-        setResult(text);
-        
-        // Potong Kuota Harian (Jika bukan demo)
+      if (fullText) {
         if (!isDemo && userData?.username) {
           const today = new Date().toISOString().split('T')[0];
           const usageRef = doc(db, 'artifacts', appId, 'public', 'data', 'usages', `${today}_${userData.username}`);
@@ -1418,12 +1447,9 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
       console.error("Detail Error AI:", error);
       setResult("");
       let errorMsg = error.message || "Periksa API Key atau koneksi internet Anda.";
-      
-      // Menyesuaikan Pesan Kesalahan Khusus jika Kunci Bocor
       if (errorMsg.includes("403") || errorMsg.includes("API key not valid") || errorMsg.includes("leaked")) {
         errorMsg = "API Key lama Anda telah diblokir otomatis oleh Google karena terdeteksi bocor di tempat publik. Silakan hapus kunci lama di Google AI Studio, buat API Key baru, lalu update variabel VITE_GEMINI_API_KEY di Vercel Anda dan Deploy ulang.";
       }
-      
       setFormError(`Gagal menyusun dokumen: ${errorMsg}`);
     } finally {
       setIsGenerating(false);
@@ -2194,7 +2220,7 @@ ${logoImg}
                       <>
                         <button onClick={() => handleExportDoc(`${type.toUpperCase()} - ${form.mapel}`, result, { themeId: form.temaDokumen, orientation: form.orientasi, paperSize: form.ukuranKertas })} className="bg-[#3B82F6] px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-[0_0_10px_rgba(59,130,246,0.4)] hover:bg-blue-500 transition-all text-white"><Download size={14}/> WORD</button>
                         {type === 'analisis_cp' && (
-                          <button onClick={() => handleExportExcel(`${type.toUpperCase()} - ${form.mapel}`, result)} className="bg-emerald-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-[0_0_10px_rgba(16,185,129,0.4)] hover:bg-emerald-500 transition-all text-white"><Download size={14}/> EXCEL</button>
+                          <button onClick={() => handleExportExcel(`${type.toUpperCase()} - ${form.mapel}`, result)} className="bg-emerald-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:bg-emerald-500 transition-all text-white"><Download size={14}/> EXCEL</button>
                         )}
                       </>
                     )}
@@ -2217,7 +2243,7 @@ ${logoImg}
             ) : (
                <div className="flex justify-center min-h-full p-4 lg:p-8">
                  <div 
-                   className={`prose prose-slate max-w-none p-10 transition-all duration-500 theme-wrapper bg-white shadow-xl border border-slate-200 ${isDemo ? 'select-none pointer-events-auto' : ''}`}
+                   className={`prose prose-slate max-w-none p-10 transition-all duration-500 theme-wrapper bg-white shadow-xl border border-slate-200 ${isDemo ? 'select-none pointer-events-auto pb-20' : 'pb-20'}`}
                    style={{
                      '--theme-title': `#${currentTheme.titleCol}`,
                      '--theme-body': `#${currentTheme.bodyCol}`,
@@ -2233,7 +2259,21 @@ ${logoImg}
                </div>
             )}
             
-            {isGenerating && <div className="absolute inset-0 bg-[#0F172A]/90 backdrop-blur-sm flex flex-col items-center justify-center z-30 rounded-b-[2.5rem]"><Loader2 className="w-12 h-12 text-[#FF8C00] animate-spin mb-4" /><p className="font-black text-[11px] uppercase tracking-widest text-[#FF8C00] animate-pulse shadow-[0_0_15px_rgba(255,140,0,0.2)] px-4 py-2 rounded-full border border-[#FF8C00]/30">Menyusun dokumen kurikulum...</p></div>}
+            {/* Indikator Loading di Awal saat dokumen masih kosong */}
+            {isGenerating && !result && (
+              <div className="absolute inset-0 bg-[#0F172A]/90 backdrop-blur-sm flex flex-col items-center justify-center z-30 rounded-b-[2.5rem]">
+                <Loader2 className="w-12 h-12 text-[#FF8C00] animate-spin mb-4" />
+                <p className="font-black text-[11px] uppercase tracking-widest text-[#FF8C00] animate-pulse shadow-[0_0_15px_rgba(255,140,0,0.2)] px-4 py-2 rounded-full border border-[#FF8C00]/30">Menghubungkan ke AI...</p>
+              </div>
+            )}
+
+            {/* Indikator Melayang Saat AI Sedang Mengetik (Live Streaming) */}
+            {isGenerating && result && (
+              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-[#0F172A] border border-[#FF8C00]/50 text-[#FF8C00] px-5 py-3 rounded-full shadow-[0_0_20px_rgba(255,140,0,0.3)] flex items-center gap-3 z-50 animate-bounce">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-[10px] font-black uppercase tracking-widest">AI Sedang Menulis...</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
