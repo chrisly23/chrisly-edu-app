@@ -1430,7 +1430,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
         systemInstruction: systemPrompt 
       });
 
-      const resultAI = await model.generateContent(userPrompt);
+      const resultAI = await model.generateContentStream(userPrompt);
       const text = resultAI.response.text();
 
       if (text) {
