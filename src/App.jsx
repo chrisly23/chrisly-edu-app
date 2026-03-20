@@ -992,8 +992,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
 
     const profilAktif = Object.entries(form.profilPelajar).filter(([k,v]) => v).map(([k]) => k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())).join(', ');
     const logoImg = form.logoSekolah ? `<div style="text-align: center; margin-bottom: 20px;"><img src="${form.logoSekolah}" width="100" /></div>` : '';
-    
-    let systemPrompt = `Anda adalah seorang Master Asisten Ahli Kurikulum Merdeka dan Dosen Ahli Pendidikan yang sangat profesional. Anda bertugas menyusun dokumen ${type.toUpperCase()} dengan kualitas TERBAIK, SANGAT DETAIL, KOMPREHENSIF, dan SIAP PAKAI tanpa perlu banyak revisi oleh guru. Dilarang keras meringkas, melewati bagian penting, atau menggunakan kata-kata seperti 'dan seterusnya' atau 'dll'. Semua poin harus dijabarkan dengan mendalam, berbobot, dan menggunakan Bahasa Indonesia baku yang akademis namun praktis.`;
+    let systemPrompt = `Anda adalah seorang Master Asisten Ahli Kurikulum Merdeka dan Dosen Ahli Pendidikan yang sangat profesional. Anda bertugas menyusun dokumen ${type.toUpperCase()} dengan kualitas TERBAIK, SANGAT DETAIL, KOMPREHENSIF, dan SIAP PAKAI tanpa perlu banyak revisi oleh guru. Dilarang keras meringkas, melewati bagian penting, atau menggunakan kata-kata seperti 'dan seterusnya' atau 'dll'. Semua poin harus dijabarkan dengan mendalam, berbobot, dan menggunakan Bahasa Indonesia baku yang akademis namun praktis. SANGAT PENTING: Hasilkan dokumen secara UTUH dan LENGKAP dari awal hingga akhir. JANGAN ADA YANG TERPOTONG di tengah jalan. Pastikan format tabel Markdown dibuat dengan rapi, jumlah kolom konsisten, dan semua tag tertutup sempurna.`;
     
     if (type === 'slide') {
       systemPrompt += `WAJIB gunakan struktur teks berpoin. Judul slide WAJIB diawali dengan double hashtag (## Judul Slide). Berikan teknik penceritaan (storytelling) yang kuat di materi.`;
