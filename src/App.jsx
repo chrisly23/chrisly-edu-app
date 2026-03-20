@@ -159,14 +159,15 @@ const compressImage = (file, maxWidth = 600, quality = 0.5) => {
 
 // --- MARKDOWN RENDERER (STABILIZED) ---
 // --- MARKDOWN RENDERER (SUPER STABIL) ---
+// --- MARKDOWN RENDERER (VERSI STABIL & RINGAN) ---
 const renderMarkdown = (text) => {
   if (!text) return "";
   let lines = text.split('\n');
   let htmlOutput = [];
   let inTable = false;
-  let tableRows = [];
+  let isHeaderRow = false;
   
-  const processBasic = (str) => {
+  const processText = (str) => {
     return str
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
@@ -177,75 +178,64 @@ const renderMarkdown = (text) => {
       .replace(/^[0-9]+\. (.*)$/gm, '<li class="ml-4 mb-1 font-medium">$1</li>');
   };
 
-  const flushTable = () => {
-    if (tableRows.length > 0) {
-      let tableHtml = '<div class="my-6 overflow-x-auto rounded-xl"><table class="w-full border-collapse text-sm">';
-      tableRows.forEach((row, idx) => {
-        tableHtml += `<tr>`;
-        row.forEach(cell => {
-          const tag = idx === 0 ? 'th' : 'td';
-          tableHtml += `<${tag} class="border p-3 text-left ${idx === 0 ? 'font-black uppercase text-xs bg-slate-50 text-slate-700' : 'font-medium'}">${processBasic(cell.trim())}</${tag}>`;
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i].trim();
+
+    // Abaikan garis pemisah tabel Markdown (|---|---|)
+    if (line.match(/^\|?[\s\-\:|]+\|?$/) && line.includes('-') && line.includes('|')) {
+        continue;
+    }
+
+    // Deteksi baris tabel (langsung render agar streaming tidak macet)
+    if (line.startsWith('|') || (line.includes('|') && !line.startsWith('<') && !line.startsWith('#'))) {
+        if (!inTable) {
+            htmlOutput.push('<div class="my-6 overflow-x-auto"><table class="w-full border-collapse text-sm">');
+            inTable = true;
+            isHeaderRow = true;
+        }
+        
+        let cleanLine = line;
+        if (cleanLine.startsWith('|')) cleanLine = cleanLine.substring(1);
+        if (cleanLine.endsWith('|')) cleanLine = cleanLine.substring(0, cleanLine.length - 1);
+        
+        let cells = cleanLine.split('|');
+        htmlOutput.push('<tr>');
+        cells.forEach(cell => {
+            let tag = isHeaderRow ? 'th' : 'td';
+            let css = isHeaderRow 
+                ? 'border p-3 text-left font-black uppercase text-xs bg-slate-50 text-slate-700' 
+                : 'border p-3 text-left font-medium align-top';
+            htmlOutput.push(`<${tag} class="${css}">${processText(cell.trim())}</${tag}>`);
         });
-        tableHtml += '</tr>';
-      });
-      tableHtml += '</table></div>';
-      htmlOutput.push(tableHtml);
-      tableRows = [];
-    }
-    inTable = false;
-  };
-
-  lines.forEach((line) => {
-    let trimmed = line.trim();
-
-    // 1. Abaikan baris pemisah tabel (seperti |---|---|)
-    if (trimmed.match(/^\|?[\s\-\:|]+\|?$/) && trimmed.includes('-')) return;
-
-    // 2. Deteksi baris tabel normal (mengandung tanda pipa '|')
-    if (trimmed.startsWith('|') || (trimmed.includes('|') && trimmed.length > 3 && !trimmed.startsWith('<'))) {
-      if (!inTable) inTable = true;
-      
-      let cleanLine = trimmed;
-      if (cleanLine.startsWith('|')) cleanLine = cleanLine.substring(1);
-      if (cleanLine.endsWith('|')) cleanLine = cleanLine.substring(0, cleanLine.length - 1);
-      
-      let cells = cleanLine.split('|').map(c => c.trim());
-      if (cells.length > 0) tableRows.push(cells);
+        htmlOutput.push('</tr>');
+        isHeaderRow = false;
     } 
-    // 3. LOGIKA ANTI-PECAH: Jika AI menekan Enter di tengah tabel
-    else if (inTable && trimmed !== "" && !trimmed.startsWith('<') && !trimmed.startsWith('#')) {
-      if (tableRows.length > 0) {
-        let lastRow = tableRows[tableRows.length - 1];
-        if (lastRow.length > 0) {
-          // Tambahkan teks yang terputus ke sel terakhir dengan tag <br/>
-          lastRow[lastRow.length - 1] += `<br/><br/>${trimmed}`;
-        }
-      }
-    } 
-    // 4. Jika benar-benar keluar dari tabel
     else {
-      if (inTable) flushTable();
-      
-      if (trimmed === "") {
-        htmlOutput.push('<br/>');
-      } else if (trimmed.startsWith('<img') || trimmed.startsWith('<table') || trimmed.startsWith('</table') || trimmed.startsWith('<tr') || trimmed.startsWith('<td') || trimmed.startsWith('</tr') || trimmed.startsWith('</td')) {
-        htmlOutput.push(line);
-      } else {
-        const processedLine = processBasic(line);
-        if (processedLine.startsWith('<li')) {
-           htmlOutput.push(`<ul class="m-0 p-0">${processedLine}</ul>`);
-        } else {
-           htmlOutput.push(`<p class="mb-2 leading-relaxed text-justify">${processedLine}</p>`);
+        // Otomatis keluar dari tabel jika menemukan baris teks biasa
+        if (inTable) {
+            htmlOutput.push('</table></div>');
+            inTable = false;
         }
-      }
+        
+        if (line === '') {
+            htmlOutput.push('<br/>');
+        } else if (line.startsWith('<')) {
+            htmlOutput.push(line);
+        } else {
+            let processed = processText(line);
+            if (processed.startsWith('<li')) {
+                htmlOutput.push(`<ul class="m-0 p-0">${processed}</ul>`);
+            } else {
+                htmlOutput.push(`<p class="mb-2 leading-relaxed text-justify">${processed}</p>`);
+            }
+        }
     }
-  });
-
-  if (inTable) flushTable();
-
+  }
+  
+  if (inTable) htmlOutput.push('</table></div>');
+  
   return htmlOutput.join('');
 };
-
 
 // --- EXPORT FUNCTIONS ---
 const handleExportDoc = (title, content, options = {}) => {
@@ -1009,14 +999,12 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     const profilAktif = Object.entries(form.profilPelajar).filter(([k,v]) => v).map(([k]) => k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())).join(', ');
     const logoImg = form.logoSekolah ? `<div style="text-align: center; margin-bottom: 20px;"><img src="${form.logoSekolah}" width="100" /></div>` : '';
     
-    let systemPrompt = `Anda adalah seorang Master Asisten Ahli Kurikulum Merdeka dan Dosen Ahli Pendidikan yang sangat profesional. Anda bertugas menyusun dokumen ${type.toUpperCase()} dengan kualitas TERBAIK, SANGAT DETAIL, KOMPREHENSIF, dan SIAP PAKAI tanpa perlu banyak revisi oleh guru. Dilarang keras meringkas, melewati bagian penting, atau menggunakan kata-kata seperti 'dan seterusnya' atau 'dll'. Semua poin harus dijabarkan dengan mendalam, berbobot, dan menggunakan Bahasa Indonesia baku yang akademis namun praktis. SANGAT PENTING: Hasilkan dokumen secara UTUH dan LENGKAP dari awal hingga akhir. JANGAN ADA YANG TERPOTONG di tengah jalan. Pastikan format tabel Markdown dibuat dengan rapi.`;
+    let systemPrompt = `Anda adalah seorang Asisten Ahli Kurikulum Merdeka dan Dosen Pendidikan. Tugas Anda menyusun dokumen ${type.toUpperCase()} dengan SANGAT DETAIL, KOMPREHENSIF, dan SIAP PAKAI. Jabarkan semua poin secara mendalam, jangan diringkas. Hasilkan dokumen secara UTUH dari awal hingga akhir tanpa terpotong.`;
     
     if (type === 'slide') {
-      systemPrompt += ` WAJIB gunakan struktur teks berpoin. Judul slide WAJIB diawali dengan double hashtag (## Judul Slide). Berikan teknik penceritaan (storytelling) yang kuat di materi.`;
-    } else if (type === 'rpm' || type === 'modul' || type === 'rpl' || type === 'jobsheet' || type === 'kokurikuler' || type === 'analisis_cp') {
-      systemPrompt += ` Dokumen ini adalah ${type === 'rpm' ? 'Rencana Pembelajaran Mendalam (RPM)' : type === 'rpl' ? 'Rencana Pelaksanaan Layanan (RPL)' : type === 'jobsheet' ? 'Job Sheet (Lembar Kerja Praktik)' : type === 'kokurikuler' ? 'Modul Projek Kokurikuler (P5)' : type === 'analisis_cp' ? 'Analisis Capaian Pembelajaran (TP & ATP)' : 'Rencana Pelaksanaan Pembelajaran (RPP)'}. Gunakan tag HTML <table> tanpa border HANYA untuk bagian pengesahan tanda tangan di akhir agar rapi. Untuk isi dokumen lainnya WAJIB menggunakan tabel Markdown biasa secara detail.`;
+      systemPrompt += ` WAJIB gunakan struktur teks berpoin. Judul slide WAJIB diawali dengan double hashtag (## Judul Slide). Berikan catatan pembicara yang detail.`;
     } else {
-      systemPrompt += ` WAJIB menggunakan format TABEL MARKDOWN yang rapi untuk bagian isi. Bahasa Indonesia formal.`;
+      systemPrompt += ` WAJIB menggunakan format Markdown standar. Untuk membuat tabel, gunakan format tabel Markdown (menggunakan tanda pipa | ). JANGAN menggunakan tag HTML <table> untuk isi materi karena dapat merusak sistem. Tag HTML <table> HANYA diizinkan dipakai di paling akhir dokumen untuk format kolom tanda tangan pengesahan. Jika Anda perlu membuat baris baru di dalam sel tabel Markdown, cukup gunakan tag <br>.`;
     }
     
     let userPrompt = "";
