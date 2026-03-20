@@ -64,12 +64,12 @@ import {
 
 // --- INITIALIZATION ---
 const firebaseConfig = {
-  apiKey: "AIzaSyAXGHhWmpP0V_HDYpTktKHk42yZZyPCFvw",
-  authDomain: "chrisly-edu-db.firebaseapp.com",
-  projectId: "chrisly-edu-db",
-  storageBucket: "chrisly-edu-db.firebasestorage.app",
-  messagingSenderId: "1068648356855",
-  appId: "1:1068648356855:web:ae3ed8ee3f140390d9acf2"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyAXGHhWmpP0V_HDYpTktKHk42yZZyPCFvw",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "chrisly-edu-db.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "chrisly-edu-db",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "chrisly-edu-db.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_SENDER_ID || "1068648356855",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:1068648356855:web:ae3ed8ee3f140390d9acf2"
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -157,7 +157,7 @@ const compressImage = (file, maxWidth = 600, quality = 0.5) => {
   });
 };
 
-// --- MARKDOWN RENDERER ---
+// --- MARKDOWN RENDERER (DIPERBAIKI AGAR TAHAN BANTING) ---
 const renderMarkdown = (text) => {
   if (!text) return "";
   let lines = text.split('\n');
@@ -171,14 +171,24 @@ const renderMarkdown = (text) => {
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/### (.*?)$/gm, '<h3 class="text-lg font-bold mt-6 mb-3 border-b pb-2">$1</h3>')
       .replace(/## (.*?)$/gm, '<h2 class="text-xl font-black mt-8 mb-4 border-b-2 pb-2">$1</h2>')
-      .replace(/# (.*?)$/gm, '<h1 class="text-2xl font-black mt-8 mb-6 uppercase text-center">$1</h1>');
+      .replace(/# (.*?)$/gm, '<h1 class="text-2xl font-black mt-8 mb-6 uppercase text-center">$1</h1>')
+      .replace(/^- (.*)$/gm, '<li class="ml-4 mb-1 list-none flex gap-2"><span class="text-[#FF8C00]">•</span> <span>$1</span></li>')
+      .replace(/^[0-9]+\. (.*)$/gm, '<li class="ml-4 mb-1 font-medium">$1</li>');
   };
 
   lines.forEach((line) => {
-    const trimmed = line.trim();
+    let trimmed = line.trim();
+
+    // Paksa tambah pipa di akhir jika AI lupa (ini yang membuat tabel sering hancur)
+    if (trimmed.startsWith('|') && !trimmed.endsWith('|')) {
+       trimmed = trimmed + '|';
+    }
+
     if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
       if (!inTable) inTable = true;
-      if (!trimmed.includes('---')) {
+      // Deteksi baris pemisah tabel markdown yang lebih akurat
+      const isSeparator = /^\|[\s-:]+\|$/.test(trimmed);
+      if (!isSeparator) {
         const cells = trimmed.split('|').filter((_, i, arr) => i > 0 && i < arr.length - 1);
         tableRows.push(cells);
       }
@@ -198,15 +208,37 @@ const renderMarkdown = (text) => {
         inTable = false;
         tableRows = [];
       }
+      
       if (trimmed === "") {
         htmlOutput.push('<br/>');
       } else if (trimmed.startsWith('<img') || trimmed.startsWith('<table') || trimmed.startsWith('</table') || trimmed.startsWith('<tr') || trimmed.startsWith('<td') || trimmed.startsWith('</tr') || trimmed.startsWith('</td')) {
         htmlOutput.push(line);
       } else {
-        htmlOutput.push(`<p class="mb-2 leading-relaxed text-justify">${processBasic(line)}</p>`);
+        const processedLine = processBasic(line);
+        if (processedLine.startsWith('<li')) {
+           htmlOutput.push(`<ul class="m-0 p-0">${processedLine}</ul>`);
+        } else {
+           htmlOutput.push(`<p class="mb-2 leading-relaxed text-justify">${processedLine}</p>`);
+        }
       }
     }
   });
+
+  // Amankan tabel yang menggantung di akhir teks
+  if (inTable) {
+     let tableHtml = '<div class="my-6 overflow-x-auto rounded-xl"><table class="w-full border-collapse text-sm">';
+     tableRows.forEach((row, idx) => {
+        tableHtml += `<tr>`;
+        row.forEach(cell => {
+           const tag = idx === 0 ? 'th' : 'td';
+           tableHtml += `<${tag} class="border p-3 text-left ${idx === 0 ? 'font-black uppercase text-xs bg-slate-50 text-slate-700' : 'font-medium'}">${processBasic(cell.trim())}</${tag}>`;
+        });
+        tableHtml += '</tr>';
+     });
+     tableHtml += '</table></div>';
+     htmlOutput.push(tableHtml);
+  }
+
   return htmlOutput.join('');
 };
 
@@ -940,7 +972,6 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     }
   };
 
-  // FUNGSI GENERATE AI YANG SUDAH DIPERBAIKI (TIDAK ADA LOOP/FETCH GANDA)
   const generateAI = async () => {
     if (!isDemo && usageCount >= (PLANS[userData?.plan || 'plus']?.limit || 5)) {
       setLimitError(true);
@@ -974,7 +1005,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     const profilAktif = Object.entries(form.profilPelajar).filter(([k,v]) => v).map(([k]) => k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())).join(', ');
     const logoImg = form.logoSekolah ? `<div style="text-align: center; margin-bottom: 20px;"><img src="${form.logoSekolah}" width="100" /></div>` : '';
     
-    let systemPrompt = `Anda adalah seorang Master Asisten Ahli Kurikulum Merdeka dan Dosen Ahli Pendidikan yang sangat profesional. Anda bertugas menyusun dokumen ${type.toUpperCase()} dengan kualitas TERBAIK, SANGAT DETAIL, KOMPREHENSIF, dan SIAP PAKAI tanpa perlu banyak revisi oleh guru. Dilarang keras meringkas, melewati bagian penting, atau menggunakan kata-kata seperti 'dan seterusnya' atau 'dll'. Semua poin harus dijabarkan dengan mendalam, berbobot, dan menggunakan Bahasa Indonesia baku yang akademis namun praktis. `;
+    let systemPrompt = `Anda adalah seorang Master Asisten Ahli Kurikulum Merdeka dan Dosen Ahli Pendidikan yang sangat profesional. Anda bertugas menyusun dokumen ${type.toUpperCase()} dengan kualitas TERBAIK, SANGAT DETAIL, KOMPREHENSIF, dan SIAP PAKAI tanpa perlu banyak revisi oleh guru. Dilarang keras meringkas, melewati bagian penting, atau menggunakan kata-kata seperti 'dan seterusnya' atau 'dll'. Semua poin harus dijabarkan dengan mendalam, berbobot, dan menggunakan Bahasa Indonesia baku yang akademis namun praktis. SANGAT PENTING: Untuk SEMUA TABEL Markdown, Anda WAJIB memastikan setiap baris diawali dengan tanda | dan diakhiri dengan tanda |. Jangan pernah gunakan enter (baris baru) di dalam sel tabel, gunakan tag <br/> jika butuh baris baru.`;
     
     if (type === 'slide') {
       systemPrompt += `WAJIB gunakan struktur teks berpoin. Judul slide WAJIB diawali dengan double hashtag (## Judul Slide). Berikan teknik penceritaan (storytelling) yang kuat di materi.`;
@@ -1360,7 +1391,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
       - **Karakteristik Pembelajaran:** [Jabarkan praktik pedagogis dengan model ${form.modelPembelajaran}, pemanfaatan teknologi digital, lingkungan belajar, dan kemitraan luar jika ada]
 
       ## 3. Pengalaman Belajar (Siklus Kognitif)
-      [PENTING: Jabarkan pengalaman belajar untuk SETIAP PERTEMUAN (Total: ${form.jumlahPertemuan} Pertemuan). Rangkaian aktivitas WAJIB mengandung 3 tahap utama: Tahap Memahami (Understanding), Tahap Mengaplikasi (Applying), dan Tahap Merefleksi (Reflecting). Seluruh tahap harus mengusung prinsip Berkesadaran (Mindful), Bermakna (Meaningful), dan Menggembirakan (Joyful). Buat TABEL TERPISAH PER PERTEMUAN berisi kolom: Tahap (Padukan Pendahuluan/Inti/Penutup ke dalam siklus Memahami/Mengaplikasi/Merefleksi), Uraian Aktivitas Guru & Siswa (sangat detail, aktif, tidak sekadar menghafal), dan Waktu (kolom paling kanan, total persis ${totalMenit} menit per tabel)]
+      [PENTING: Jabarkan pengalaman belajar untuk SETIAP PERTEMUAN (Total: ${form.jumlahPertemuan} Pertemuan). Rangkaian aktivitas WAJIB mengandung 3 tahap utama: Tahap Memahami (Understanding), Tahap Mengaplikasi (Applying), dan Tahap Merefleksi (Reflecting). Seluruh tahap harus mengusung prinsip Berkesadaran (Mindful), Bermakna (Meaningful), dan Menggembirakan (Joyful). Buat TABEL TERPISAH PER PERTEMUAN dengan format Markdown Sempurna berisi kolom: | Tahap | Uraian Aktivitas Guru & Siswa | Waktu | (total persis ${totalMenit} menit per tabel)]
 
       ## 4. Asesmen Pembelajaran
       [Uraikan strategi penilaian yang berkelanjutan:]
@@ -1387,10 +1418,11 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     }
 
     try {
-      // Untuk menjalankan di lingkungan preview ini, kita biarkan apiKey kosong.
-      // Nanti saat Anda deploy ke Vercel, ubah baris ini menjadi:
-      // const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("Kunci API VITE_GEMINI_API_KEY tidak ditemukan di environment Vercel.");
+      }
+
       // Pemanggilan Resmi menggunakan SDK Google Generative AI
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ 
