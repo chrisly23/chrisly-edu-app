@@ -64,12 +64,12 @@ import {
 
 // --- INITIALIZATION ---
 const firebaseConfig = {
-  apiKey: "AIzaSyAXGHhWmpP0V_HDYpTktKHk42yZZyPCFvw",
-  authDomain: "chrisly-edu-db.firebaseapp.com",
-  projectId: "chrisly-edu-db",
-  storageBucket: "chrisly-edu-db.firebasestorage.app",
-  messagingSenderId: "1068648356855",
-  appId: "1:1068648356855:web:ae3ed8ee3f140390d9acf2"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyAXGHhWmpP0V_HDYpTktKHk42yZZyPCFvw",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "chrisly-edu-db.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "chrisly-edu-db",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "chrisly-edu-db.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_SENDER_ID || "1068648356855",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:1068648356855:web:ae3ed8ee3f140390d9acf2"
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -995,7 +995,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     setLimitError(false);
     setIsGenerating(true);
     setMode('preview');
-    setResult(""); // Dikosongkan agar efek loading awal terlihat
+    setResult("Sedang menyusun dokumen dengan AI terbaru... Mohon tunggu. Proses ini membutuhkan waktu sekitar 10-30 detik.");
     
     const totalMenit = parseInt(form.jumlahJP || 0) * parseInt(form.menitPerJP || 0);
     const textAlokasiWaktu = `${form.jumlahPertemuan} Pertemuan (Alokasi per pertemuan: ${form.jumlahJP} JP x ${form.menitPerJP} Menit = ${totalMenit} Menit)`;
@@ -1430,17 +1430,12 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
         systemInstruction: systemPrompt 
       });
 
-      // MENGGUNAKAN STREAMING (Efek Mengetik Real-time)
       const resultAI = await model.generateContentStream(userPrompt);
-      
-      let fullText = "";
-      for await (const chunk of resultAI.stream) {
-        const chunkText = chunk.text();
-        fullText += chunkText;
-        setResult(fullText); // Update tampilan ke layar secara progresif
-      }
+      const text = resultAI.response.text();
 
-      if (fullText) {
+      if (text) {
+        setResult(text);
+        
         // Potong Kuota Harian (Jika bukan demo)
         if (!isDemo && userData?.username) {
           const today = new Date().toISOString().split('T')[0];
@@ -2270,8 +2265,7 @@ ${logoImg}
                </div>
             )}
             
-            {/* Ubah logika loading agar hilang begitu teks pertama kali muncul */}
-            {isGenerating && !result && <div className="absolute inset-0 bg-[#0F172A]/90 backdrop-blur-sm flex flex-col items-center justify-center z-30 rounded-b-[2.5rem]"><Loader2 className="w-12 h-12 text-[#FF8C00] animate-spin mb-4" /><p className="font-black text-[11px] uppercase tracking-widest text-[#FF8C00] animate-pulse shadow-[0_0_15px_rgba(255,140,0,0.2)] px-4 py-2 rounded-full border border-[#FF8C00]/30">Menghubungkan ke AI...</p></div>}
+            {isGenerating && <div className="absolute inset-0 bg-[#0F172A]/90 backdrop-blur-sm flex flex-col items-center justify-center z-30 rounded-b-[2.5rem]"><Loader2 className="w-12 h-12 text-[#FF8C00] animate-spin mb-4" /><p className="font-black text-[11px] uppercase tracking-widest text-[#FF8C00] animate-pulse shadow-[0_0_15px_rgba(255,140,0,0.2)] px-4 py-2 rounded-full border border-[#FF8C00]/30">Menyusun dokumen kurikulum...</p></div>}
           </div>
         </div>
       </div>
