@@ -158,6 +158,7 @@ const compressImage = (file, maxWidth = 600, quality = 0.5) => {
 };
 
 // --- MARKDOWN RENDERER ---
+// --- MARKDOWN RENDERER ---
 const renderMarkdown = (text) => {
   if (!text) return "";
   let lines = text.split('\n');
@@ -174,35 +175,43 @@ const renderMarkdown = (text) => {
       .replace(/# (.*?)$/gm, '<h1 class="text-2xl font-black mt-8 mb-6 uppercase text-center">$1</h1>');
   };
 
+  const flushTable = () => {
+    if (tableRows.length > 0) {
+      let tableHtml = '<div class="my-6 overflow-x-auto rounded-xl"><table class="w-full border-collapse text-sm">';
+      tableRows.forEach((row, idx) => {
+        tableHtml += `<tr>`;
+        row.forEach(cell => {
+          const tag = idx === 0 ? 'th' : 'td';
+          tableHtml += `<${tag} class="border p-3 text-left ${idx === 0 ? 'font-black uppercase text-xs bg-slate-50 text-slate-700' : 'font-medium'}">${processBasic(cell.trim())}</${tag}>`;
+        });
+        tableHtml += '</tr>';
+      });
+      tableHtml += '</table></div>';
+      htmlOutput.push(tableHtml);
+      tableRows = [];
+    }
+    inTable = false;
+  };
+
   lines.forEach((line) => {
     let trimmed = line.trim();
 
-    if (trimmed.startsWith('|') && !trimmed.endsWith('|')) {
-       trimmed = trimmed + '|';
-    }
-
-    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+    // Deteksi tabel yang lebih stabil
+    if (trimmed.startsWith('|')) {
       if (!inTable) inTable = true;
-      if (!trimmed.includes('---')) {
-        const cells = trimmed.split('|').filter((_, i, arr) => i > 0 && i < arr.length - 1);
-        tableRows.push(cells);
+      // Abaikan baris pemisah tabel seperti |---|---|
+      if (!trimmed.match(/^\|[\s\-\:|]+\|$/)) {
+        // Ambil isi sel dan bersihkan
+        const cells = trimmed.split('|').map(c => c.trim());
+        // Buang elemen kosong di awal dan akhir akibat split separator |
+        if (cells[0] === '') cells.shift();
+        if (cells[cells.length - 1] === '') cells.pop();
+        
+        if (cells.length > 0) tableRows.push(cells);
       }
     } else {
-      if (inTable) {
-        let tableHtml = '<div class="my-6 overflow-x-auto rounded-xl"><table class="w-full border-collapse text-sm">';
-        tableRows.forEach((row, idx) => {
-          tableHtml += `<tr>`;
-          row.forEach(cell => {
-            const tag = idx === 0 ? 'th' : 'td';
-            tableHtml += `<${tag} class="border p-3 text-left ${idx === 0 ? 'font-black uppercase text-xs bg-slate-50 text-slate-700' : 'font-medium'}">${processBasic(cell.trim())}</${tag}>`;
-          });
-          tableHtml += '</tr>';
-        });
-        tableHtml += '</table></div>';
-        htmlOutput.push(tableHtml);
-        inTable = false;
-        tableRows = [];
-      }
+      if (inTable) flushTable();
+      
       if (trimmed === "") {
         htmlOutput.push('<br/>');
       } else if (trimmed.startsWith('<img') || trimmed.startsWith('<table') || trimmed.startsWith('</table') || trimmed.startsWith('<tr') || trimmed.startsWith('<td') || trimmed.startsWith('</tr') || trimmed.startsWith('</td')) {
@@ -213,23 +222,10 @@ const renderMarkdown = (text) => {
     }
   });
 
-  if (inTable) {
-     let tableHtml = '<div class="my-6 overflow-x-auto rounded-xl"><table class="w-full border-collapse text-sm">';
-     tableRows.forEach((row, idx) => {
-        tableHtml += `<tr>`;
-        row.forEach(cell => {
-           const tag = idx === 0 ? 'th' : 'td';
-           tableHtml += `<${tag} class="border p-3 text-left ${idx === 0 ? 'font-black uppercase text-xs bg-slate-50 text-slate-700' : 'font-medium'}">${processBasic(cell.trim())}</${tag}>`;
-        });
-        tableHtml += '</tr>';
-     });
-     tableHtml += '</table></div>';
-     htmlOutput.push(tableHtml);
-  }
+  if (inTable) flushTable();
 
   return htmlOutput.join('');
 };
-
 // --- EXPORT FUNCTIONS ---
 const handleExportDoc = (title, content, options = {}) => {
   const { themeId = 'profesional', orientation = 'Portrait', paperSize = 'A4' } = options;
@@ -1839,8 +1835,9 @@ ${logoImg}
              '--theme-title': `#${currentTheme.titleCol}`,
              '--theme-body': `#${currentTheme.bodyCol}`,
              width: '100%',
-             maxWidth: form.orientasi === 'Landscape' ? '100%' : '850px',
-             minHeight: form.orientasi === 'Landscape' ? '600px' : '1100px'
+             margin: '0 auto',
+             maxWidth: form.orientasi === 'Landscape' ? '1123px' : '850px', // Proporsi A4 sesungguhnya
+             minHeight: form.orientasi === 'Landscape' ? '794px' : '1100px'
            }}
            onContextMenu={isDemo ? (e) => e.preventDefault() : undefined}
            onDragStart={isDemo ? (e) => e.preventDefault() : undefined}
