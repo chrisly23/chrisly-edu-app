@@ -158,6 +158,7 @@ const compressImage = (file, maxWidth = 600, quality = 0.5) => {
 };
 
 // --- MARKDOWN RENDERER ---
+// --- MARKDOWN RENDERER ---
 const renderMarkdown = (text) => {
   if (!text) return "";
   let lines = text.split('\n');
@@ -171,18 +172,11 @@ const renderMarkdown = (text) => {
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/### (.*?)$/gm, '<h3 class="text-lg font-bold mt-6 mb-3 border-b pb-2">$1</h3>')
       .replace(/## (.*?)$/gm, '<h2 class="text-xl font-black mt-8 mb-4 border-b-2 pb-2">$1</h2>')
-      .replace(/# (.*?)$/gm, '<h1 class="text-2xl font-black mt-8 mb-6 uppercase text-center">$1</h1>')
-      .replace(/^- (.*)$/gm, '<li class="ml-4 mb-1 list-none flex gap-2"><span class="text-[#FF8C00]">•</span> <span>$1</span></li>')
-      .replace(/^[0-9]+\. (.*)$/gm, '<li class="ml-4 mb-1 font-medium">$1</li>');
+      .replace(/# (.*?)$/gm, '<h1 class="text-2xl font-black mt-8 mb-6 uppercase text-center">$1</h1>');
   };
 
   lines.forEach((line) => {
-    let trimmed = line.trim();
-
-    if (trimmed.startsWith('|') && !trimmed.endsWith('|')) {
-       trimmed = trimmed + '|';
-    }
-
+    const trimmed = line.trim();
     if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
       if (!inTable) inTable = true;
       if (!trimmed.includes('---')) {
@@ -210,32 +204,13 @@ const renderMarkdown = (text) => {
       } else if (trimmed.startsWith('<img') || trimmed.startsWith('<table') || trimmed.startsWith('</table') || trimmed.startsWith('<tr') || trimmed.startsWith('<td') || trimmed.startsWith('</tr') || trimmed.startsWith('</td')) {
         htmlOutput.push(line);
       } else {
-        const processedLine = processBasic(line);
-        if (processedLine.startsWith('<li')) {
-           htmlOutput.push(`<ul class="m-0 p-0">${processedLine}</ul>`);
-        } else {
-           htmlOutput.push(`<p class="mb-2 leading-relaxed text-justify">${processedLine}</p>`);
-        }
+        htmlOutput.push(`<p class="mb-2 leading-relaxed text-justify">${processBasic(line)}</p>`);
       }
     }
   });
-
-  if (inTable) {
-     let tableHtml = '<div class="my-6 overflow-x-auto rounded-xl"><table class="w-full border-collapse text-sm">';
-     tableRows.forEach((row, idx) => {
-        tableHtml += `<tr>`;
-        row.forEach(cell => {
-           const tag = idx === 0 ? 'th' : 'td';
-           tableHtml += `<${tag} class="border p-3 text-left ${idx === 0 ? 'font-black uppercase text-xs bg-slate-50 text-slate-700' : 'font-medium'}">${processBasic(cell.trim())}</${tag}>`;
-        });
-        tableHtml += '</tr>';
-     });
-     tableHtml += '</table></div>';
-     htmlOutput.push(tableHtml);
-  }
-
   return htmlOutput.join('');
 };
+
 
 // --- EXPORT FUNCTIONS ---
 const handleExportDoc = (title, content, options = {}) => {
