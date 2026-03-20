@@ -157,8 +157,7 @@ const compressImage = (file, maxWidth = 600, quality = 0.5) => {
   });
 };
 
-// --- MARKDOWN RENDERER ---
-// --- MARKDOWN RENDERER ---
+// --- MARKDOWN RENDERER (STABILIZED) ---
 const renderMarkdown = (text) => {
   if (!text) return "";
   let lines = text.split('\n');
@@ -198,14 +197,18 @@ const renderMarkdown = (text) => {
   lines.forEach((line) => {
     let trimmed = line.trim();
 
-    // Deteksi dan buang baris pemisah tabel Markdown (seperti |---|---|)
-    if (trimmed.match(/^\|[\s\-\:|]+\|$/)) return;
+    // Deteksi pemisah tabel (|---|---|) yang lebih stabil
+    if (trimmed.match(/^\|?[\s\-\:|]+\|?$/) && trimmed.includes('-')) return;
 
-    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+    // Logika tabel anti-pecah (mengatasi AI yang lupa memberi tanda '|')
+    if (trimmed.startsWith('|') || (trimmed.includes('|') && trimmed.length > 3 && !trimmed.startsWith('<'))) {
       if (!inTable) inTable = true;
-      let cells = trimmed.split('|').map(c => c.trim());
-      cells.shift(); // Buang elemen kosong pertama
-      cells.pop();   // Buang elemen kosong terakhir
+      
+      let cleanLine = trimmed;
+      if (cleanLine.startsWith('|')) cleanLine = cleanLine.substring(1);
+      if (cleanLine.endsWith('|')) cleanLine = cleanLine.substring(0, cleanLine.length - 1);
+      
+      let cells = cleanLine.split('|').map(c => c.trim());
       if (cells.length > 0) tableRows.push(cells);
     } else {
       if (inTable) flushTable();
@@ -992,14 +995,15 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
 
     const profilAktif = Object.entries(form.profilPelajar).filter(([k,v]) => v).map(([k]) => k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())).join(', ');
     const logoImg = form.logoSekolah ? `<div style="text-align: center; margin-bottom: 20px;"><img src="${form.logoSekolah}" width="100" /></div>` : '';
-    let systemPrompt = `Anda adalah seorang Master Asisten Ahli Kurikulum Merdeka dan Dosen Ahli Pendidikan yang sangat profesional. Anda bertugas menyusun dokumen ${type.toUpperCase()} dengan kualitas TERBAIK, SANGAT DETAIL, KOMPREHENSIF, dan SIAP PAKAI tanpa perlu banyak revisi oleh guru. Dilarang keras meringkas, melewati bagian penting, atau menggunakan kata-kata seperti 'dan seterusnya' atau 'dll'. Semua poin harus dijabarkan dengan mendalam, berbobot, dan menggunakan Bahasa Indonesia baku yang akademis namun praktis. SANGAT PENTING: Hasilkan dokumen secara UTUH dan LENGKAP dari awal hingga akhir. JANGAN ADA YANG TERPOTONG di tengah jalan. Pastikan format tabel Markdown dibuat dengan rapi, jumlah kolom konsisten, dan semua tag tertutup sempurna.`;
+    
+    let systemPrompt = `Anda adalah seorang Master Asisten Ahli Kurikulum Merdeka dan Dosen Ahli Pendidikan yang sangat profesional. Anda bertugas menyusun dokumen ${type.toUpperCase()} dengan kualitas TERBAIK, SANGAT DETAIL, KOMPREHENSIF, dan SIAP PAKAI tanpa perlu banyak revisi oleh guru. Dilarang keras meringkas, melewati bagian penting, atau menggunakan kata-kata seperti 'dan seterusnya' atau 'dll'. Semua poin harus dijabarkan dengan mendalam, berbobot, dan menggunakan Bahasa Indonesia baku yang akademis namun praktis. SANGAT PENTING: Hasilkan dokumen secara UTUH dan LENGKAP dari awal hingga akhir. JANGAN ADA YANG TERPOTONG di tengah jalan. Pastikan format tabel Markdown dibuat dengan sangat rapi, lurus, dan jumlah kolom selalu konsisten.`;
     
     if (type === 'slide') {
-      systemPrompt += `WAJIB gunakan struktur teks berpoin. Judul slide WAJIB diawali dengan double hashtag (## Judul Slide). Berikan teknik penceritaan (storytelling) yang kuat di materi.`;
+      systemPrompt += ` WAJIB gunakan struktur teks berpoin. Judul slide WAJIB diawali dengan double hashtag (## Judul Slide). Berikan teknik penceritaan (storytelling) yang kuat di materi.`;
     } else if (type === 'rpm' || type === 'modul' || type === 'rpl' || type === 'jobsheet' || type === 'kokurikuler' || type === 'analisis_cp') {
-      systemPrompt += `Dokumen ini adalah ${type === 'rpm' ? 'Rencana Pembelajaran Mendalam (RPM)' : type === 'rpl' ? 'Rencana Pelaksanaan Layanan (RPL)' : type === 'jobsheet' ? 'Job Sheet (Lembar Kerja Praktik)' : type === 'kokurikuler' ? 'Modul Projek Kokurikuler (P5)' : type === 'analisis_cp' ? 'Analisis Capaian Pembelajaran (TP & ATP)' : 'Rencana Pelaksanaan Pembelajaran (RPP)'}. WAJIB menggunakan format Markdown yang rapi. Gunakan tag HTML <table> tanpa border untuk bagian pengesahan tanda tangan di akhir agar rapi. Pastikan semua tabel yang dibuat panjang, detail, dan tidak terpotong.`;
+      systemPrompt += ` Dokumen ini adalah ${type === 'rpm' ? 'Rencana Pembelajaran Mendalam (RPM)' : type === 'rpl' ? 'Rencana Pelaksanaan Layanan (RPL)' : type === 'jobsheet' ? 'Job Sheet (Lembar Kerja Praktik)' : type === 'kokurikuler' ? 'Modul Projek Kokurikuler (P5)' : type === 'analisis_cp' ? 'Analisis Capaian Pembelajaran (TP & ATP)' : 'Rencana Pelaksanaan Pembelajaran (RPP)'}. WAJIB menggunakan format Markdown yang rapi. Gunakan tag HTML <table> tanpa border HANYA untuk bagian pengesahan tanda tangan di akhir agar rapi. SANGAT PENTING: Di dalam sel tabel Markdown, DILARANG KERAS menekan ENTER atau membuat baris baru. Jika butuh baris baru/poin di dalam sel tabel, WAJIB gunakan tag <br/>. Ini sangat penting agar struktur tabel tidak hancur!`;
     } else {
-      systemPrompt += `WAJIB menggunakan format TABEL MARKDOWN yang rapi untuk bagian isi. Bahasa Indonesia formal.`;
+      systemPrompt += ` WAJIB menggunakan format TABEL MARKDOWN yang rapi untuk bagian isi. Bahasa Indonesia formal.`;
     }
     
     let userPrompt = "";
