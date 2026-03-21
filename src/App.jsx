@@ -224,13 +224,11 @@ const renderMarkdown = (text) => {
     let line = lines[i];
     let trimmed = line.trim();
 
-    // 1. Abaikan baris pemisah tabel (|---|---|)
     if (trimmed.match(/^\|?[\s\-\:|]+\|?$/) && trimmed.includes('-') && trimmed.includes('|')) {
       if (!inTable) inTable = true;
       continue; 
     }
 
-    // 2. Deteksi baris tabel
     if (trimmed.startsWith('|') || (inTable && trimmed.includes('|') && !trimmed.startsWith('<'))) {
       if (!inTable) inTable = true;
       
@@ -241,17 +239,14 @@ const renderMarkdown = (text) => {
       let cells = cleanLine.split('|');
       tableRows.push(cells);
     } 
-    // 3. LOGIKA PENYELAMAT: Kalau AI menekan Enter di dalam tabel
     else if (inTable && trimmed !== "" && !trimmed.startsWith('#') && !trimmed.startsWith('<')) {
       if (tableRows.length > 0) {
         let lastRow = tableRows[tableRows.length - 1];
         if (lastRow.length > 0) {
-          // Tangkap teks yang jatuh dan masukkan lagi ke sel terakhir
           lastRow[lastRow.length - 1] += `<br/><br/>${trimmed}`;
         }
       }
     } 
-    // 4. Keluar dari tabel dengan aman
     else {
       if (inTable && (trimmed === "" || trimmed.startsWith('#') || trimmed.startsWith('<'))) {
          flushTable();
@@ -284,7 +279,7 @@ const handleExportDoc = (title, content, options = {}) => {
   const theme = COLOR_THEMES.find(t => t.id === themeId) || COLOR_THEMES[0];
   
   let width = '210mm';
-  let height = '297mm'; // A4
+  let height = '297mm';
   if (paperSize === 'F4') { width = '210mm'; height = '330mm'; }
   if (paperSize === 'Letter') { width = '8.5in'; height = '11in'; }
   if (paperSize === 'Legal') { width = '8.5in'; height = '14in'; }
@@ -422,7 +417,6 @@ const App = () => {
     };
     initAuth();
 
-    // MEMPERBAIKI SESSION REFRESH
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       
@@ -505,13 +499,12 @@ const App = () => {
         const registryData = foundDoc.data();
         const data = { ...registryData, role: 'guru' };
         
-        // Pastikan user tidak null sebelum menyimpan
         if (user && user.uid) {
           await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'info'), data);
         }
         
         setUserData(data);
-        localStorage.setItem('chrisly_guru', username); // Simpan Sesi
+        localStorage.setItem('chrisly_guru', username);
         setView('dashboard');
       } else { 
         setMessage({ type: 'error', text: 'ID Akses tidak ditemukan.' }); 
@@ -531,7 +524,7 @@ const App = () => {
       const adminData = { role: 'admin', name: 'Administrator Utama', username: 'admin', sekolah: 'Pusat Chrisly Education', plan: 'ultra' };
       await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'info'), adminData);
       setUserData(adminData);
-      localStorage.setItem('chrisly_admin', 'true'); // Simpan Sesi
+      localStorage.setItem('chrisly_admin', 'true');
       setView('admin');
       setIsAdminAuthModalOpen(false);
       setLoading(false);
@@ -557,21 +550,11 @@ const App = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#003366] to-black text-white font-sans">
       <style>{`
-        /* Konfigurasi agar warna tema HANYA diterapkan pada Judul dan Tabel */
         .theme-wrapper { background-color: #ffffff; color: #1e293b; }
         .theme-wrapper p, .theme-wrapper li, .theme-wrapper strong, .theme-wrapper em { color: #1e293b !important; }
-        
-        .theme-wrapper h1, .theme-wrapper h2, .theme-wrapper h3, .theme-wrapper h4 {
-          color: var(--theme-title) !important;
-          border-color: var(--theme-title) !important;
-        }
-        .theme-wrapper table, .theme-wrapper th, .theme-wrapper td {
-          border-color: var(--theme-title) !important;
-        }
-        .theme-wrapper th {
-          background-color: var(--theme-title) !important;
-          color: #ffffff !important;
-        }
+        .theme-wrapper h1, .theme-wrapper h2, .theme-wrapper h3, .theme-wrapper h4 { color: var(--theme-title) !important; border-color: var(--theme-title) !important; }
+        .theme-wrapper table, .theme-wrapper th, .theme-wrapper td { border-color: var(--theme-title) !important; }
+        .theme-wrapper th { background-color: var(--theme-title) !important; color: #ffffff !important; }
       `}</style>
       
       {view === 'login' ? (
@@ -695,7 +678,6 @@ const AdminLoginModal = ({ onClose, onLogin }) => {
   );
 };
 
-// --- LOGIN & LANDING PAGE TAMPILAN BARU (TEMA: THE TECH PROFESSIONAL) ---
 const LoginScreen = ({ onLogin, onAdminClick, message }) => {
   const [username, setUsername] = useState('');
   const [landingView, setLandingView] = useState('home');
@@ -721,7 +703,7 @@ const LoginScreen = ({ onLogin, onAdminClick, message }) => {
   return (
     <div className="min-h-screen flex flex-col font-sans">
       
-      {/* NAVBAR / HEADER */}
+      {/* NAVBAR */}
       <nav className="w-full bg-[#003366]/90 backdrop-blur-sm border-b border-blue-900/50 px-6 md:px-12 py-4 flex justify-between items-center sticky top-0 z-50 shadow-lg shadow-[#000000]/20">
         <div className="flex items-center gap-3 text-[#FF8C00]">
           <div className="p-2 bg-[#FF8C00] text-white rounded-lg flex items-center justify-center overflow-hidden"><AppLogo size={20} /></div>
@@ -738,7 +720,6 @@ const LoginScreen = ({ onLogin, onAdminClick, message }) => {
       {/* MAIN CONTENT */}
       <div className={`flex-1 flex justify-center p-4 md:p-8 ${demoType ? 'items-start' : 'items-center'}`}>
         
-        {/* VIEW: HOME (Landing Page Default) */}
         {landingView === 'home' && !demoType && (
           <div className="w-full max-w-5xl text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="w-24 h-24 bg-[#0F172A] border border-blue-500/30 rounded-[2rem] flex items-center justify-center mx-auto mb-8 text-[#FF8C00] shadow-[0_0_20px_rgba(59,130,246,0.3)] overflow-hidden"><AppLogo size={48}/></div>
@@ -763,7 +744,6 @@ const LoginScreen = ({ onLogin, onAdminClick, message }) => {
           </div>
         )}
 
-        {/* VIEW: HOME (Demo Generator Mode) */}
         {landingView === 'home' && demoType && (
           <div className="w-full max-w-7xl animate-in fade-in slide-in-from-bottom-4 duration-500">
             <button onClick={() => setDemoType(null)} className="mb-6 px-4 py-2 bg-[#0F172A] rounded-xl shadow-sm border border-blue-500/30 text-[10px] font-black uppercase text-slate-300 flex items-center gap-2 hover:text-[#FF8C00] hover:border-[#FF8C00] transition-colors w-fit">
@@ -779,7 +759,6 @@ const LoginScreen = ({ onLogin, onAdminClick, message }) => {
           </div>
         )}
 
-        {/* VIEW: LOGIN (Formulir Login yang dipindahkan) */}
         {landingView === 'login' && (
           <div className="w-full max-w-md bg-[#0F172A] rounded-[2.5rem] shadow-[0_0_30px_rgba(0,51,102,0.5)] border border-blue-500/30 p-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center mb-10">
@@ -804,7 +783,6 @@ const LoginScreen = ({ onLogin, onAdminClick, message }) => {
           </div>
         )}
 
-        {/* VIEW: GALERI */}
         {landingView === 'galery' && (
           <div className="w-full max-w-5xl animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center mb-10">
@@ -836,7 +814,6 @@ const LoginScreen = ({ onLogin, onAdminClick, message }) => {
           </div>
         )}
 
-        {/* VIEW: KONTAK */}
         {landingView === 'kontak' && (
           <div className="w-full max-w-md bg-[#0F172A] rounded-[2.5rem] shadow-[0_0_30px_rgba(0,51,102,0.5)] border border-blue-500/30 p-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center mb-10">
@@ -868,7 +845,6 @@ const LoginScreen = ({ onLogin, onAdminClick, message }) => {
 
       </div>
 
-      {/* LANDING PAGE FOOTER */}
       <footer className="w-full bg-[#003366] border-t border-blue-800/50 px-6 md:px-12 py-8 mt-auto">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3 text-[#FF8C00]">
@@ -1030,7 +1006,7 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     setLimitError(false);
     setIsGenerating(true);
     setMode('preview');
-    setResult(""); // Dikosongkan di awal agar AI mengetik dari kosong
+    setResult(""); 
     
     const totalMenit = parseInt(form.jumlahJP || 0) * parseInt(form.menitPerJP || 0);
     const textAlokasiWaktu = `${form.jumlahPertemuan} Pertemuan (Alokasi per pertemuan: ${form.jumlahJP} JP x ${form.menitPerJP} Menit = ${totalMenit} Menit)`;
@@ -1451,17 +1427,22 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     }
 
     try {
-      // PENERAPAN API KEY AMAN UNTUK ENVIRONMENT INI
-      const apiKey = ""; 
+      let apiKey = ""; 
+      try {
+        if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+          apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        }
+      } catch (e) {
+        console.warn("Env check failed", e);
+      }
+
       const genAI = new GoogleGenerativeAI(apiKey);
       
-      // MODEL HARUS MENGGUNAKAN gemini-2.5-flash-preview-09-2025 di environment preview
       const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.5-flash-preview-09-2025",
+        model: apiKey ? "gemini-2.5-flash" : "gemini-2.5-flash-preview-09-2025",
         generationConfig: { maxOutputTokens: 8192 }
       });
       
-      // MENGGUNAKAN NON-STREAMING API KARENA STREAMING TIDAK DIDUKUNG DI PREVIEW INI
       const resultAI = await model.generateContent({
         contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }]
       });
@@ -1482,10 +1463,17 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     } catch (error) {
       console.error("Detail Error AI:", error);
       setResult("");
-      let errorMsg = error.message || "Periksa API Key atau koneksi internet Anda.";
-      if (errorMsg.includes("403") || errorMsg.includes("API key not valid") || errorMsg.includes("leaked")) {
-        errorMsg = "API Key lama Anda telah diblokir otomatis oleh Google karena terdeteksi bocor di tempat publik. Silakan hapus kunci lama di Google AI Studio, buat API Key baru, lalu update variabel VITE_GEMINI_API_KEY di Vercel Anda dan Deploy ulang.";
+      
+      let errorMsg = error.message || "Periksa koneksi internet Anda.";
+      let apiKeyCheck = "";
+      try { apiKeyCheck = import.meta?.env?.VITE_GEMINI_API_KEY; } catch(e) {}
+      
+      if (!apiKeyCheck) {
+        errorMsg = "API Key tidak ditemukan. Pastikan Anda telah mengisi VITE_GEMINI_API_KEY di pengaturan Environment Variables Vercel lalu Deploy ulang.";
+      } else if (errorMsg.includes("403") || errorMsg.includes("API key not valid") || errorMsg.includes("leaked")) {
+        errorMsg = "API Key tidak valid atau diblokir otomatis oleh Google. Silakan buat kunci baru di Google AI Studio, update di Vercel, lalu Deploy ulang.";
       }
+      
       setFormError(`Gagal menyusun dokumen: ${errorMsg}`);
     } finally {
       setIsGenerating(false);
@@ -1517,7 +1505,6 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     return COLOR_THEMES.find(t => t.id === form.temaDokumen) || COLOR_THEMES[0];
   }, [form.temaDokumen]);
 
-  // Fungsi untuk merender Live Preview (Sebelum Dihasilkan AI)
   const renderLivePreview = () => {
     const profilAktif = Object.entries(form.profilPelajar).filter(([k,v]) => v).map(([k]) => k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())).join(', ') || '-';
     const logoImg = form.logoSekolah ? `<div style="text-align: center; margin-bottom: 20px;"><img src="${form.logoSekolah}" width="100" /></div>` : '';
