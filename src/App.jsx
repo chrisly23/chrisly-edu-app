@@ -63,14 +63,36 @@ import {
 } from 'lucide-react';
 
 // --- INITIALIZATION ---
+// Membungkus pembacaan env dengan aman agar tidak crash di environment iframe
+let fbApiKey = "AIzaSyAXGHhWmpP0V_HDYpTktKHk42yZZyPCFvw";
+let fbAuthDomain = "chrisly-edu-db.firebaseapp.com";
+let fbProjectId = "chrisly-edu-db";
+let fbStorageBucket = "chrisly-edu-db.firebasestorage.app";
+let fbSenderId = "1068648356855";
+let fbAppIdConfig = "1:1068648356855:web:ae3ed8ee3f140390d9acf2";
+
+try {
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    fbApiKey = import.meta.env.VITE_FIREBASE_API_KEY || fbApiKey;
+    fbAuthDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || fbAuthDomain;
+    fbProjectId = import.meta.env.VITE_FIREBASE_PROJECT_ID || fbProjectId;
+    fbStorageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || fbStorageBucket;
+    fbSenderId = import.meta.env.VITE_FIREBASE_SENDER_ID || fbSenderId;
+    fbAppIdConfig = import.meta.env.VITE_FIREBASE_APP_ID || fbAppIdConfig;
+  }
+} catch (e) {
+  // Environment tanpa import.meta, fallback ke nilai default
+}
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyAXGHhWmpP0V_HDYpTktKHk42yZZyPCFvw",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "chrisly-edu-db.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "chrisly-edu-db",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "chrisly-edu-db.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_SENDER_ID || "1068648356855",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:1068648356855:web:ae3ed8ee3f140390d9acf2"
+  apiKey: fbApiKey,
+  authDomain: fbAuthDomain,
+  projectId: fbProjectId,
+  storageBucket: fbStorageBucket,
+  messagingSenderId: fbSenderId,
+  appId: fbAppIdConfig
 };
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -158,7 +180,6 @@ const compressImage = (file, maxWidth = 600, quality = 0.5) => {
 };
 
 // --- MARKDOWN RENDERER ---
-// --- MARKDOWN RENDERER (FINAL & ANTI-CRASH) ---
 const renderMarkdown = (text) => {
   if (!text) return "";
   let lines = text.split('\n');
@@ -1430,38 +1451,23 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     }
 
     try {
-      let apiKey = "";
-      try {
-        if (typeof import.meta !== 'undefined' && import.meta.env) {
-          apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
-        }
-      } catch (e) {
-        console.warn("import.meta not available");
-      }
-
-      if (!apiKey) {
-        throw new Error("Kunci API VITE_GEMINI_API_KEY tidak ditemukan di environment Vercel.");
-      }
-
+      // PENERAPAN API KEY AMAN UNTUK ENVIRONMENT INI
+      const apiKey = ""; 
       const genAI = new GoogleGenerativeAI(apiKey);
+      
+      // MODEL HARUS MENGGUNAKAN gemini-2.5-flash-preview-09-2025 di environment preview
       const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.5-flash",
-        generationConfig: {
-          temperature: 0.3, 
-          maxOutputTokens: 8192, 
-        }
+        model: "gemini-2.5-flash-preview-09-2025",
+        generationConfig: { maxOutputTokens: 8192 }
       });
-      // PENERAPAN STREAMING 
+      
+      // MENGGUNAKAN NON-STREAMING API KARENA STREAMING TIDAK DIDUKUNG DI PREVIEW INI
       const resultAI = await model.generateContent({
         contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }]
       });
 
-      let fullText = "";
-      for await (const chunk of resultAI.stream) {
-        const chunkText = chunk.text();
-        fullText += chunkText;
-        setResult(fullText); // Mengetik progresif
-      }
+      const fullText = resultAI.response.text();
+      setResult(fullText);
 
       if (fullText) {
         if (!isDemo && userData?.username) {
@@ -1633,7 +1639,7 @@ ${logoImg}
 * **Sarana & Prasarana:** (Akan diuraikan secara spesifik oleh AI)
 
 ## II. Pemetaan Dimensi & Tujuan (Inti)
-*Pemetaan dimensi Profil Pelajar Pancasila (${profilAktif || '-'}) beserta Elemen, Sub-Elemen, dan Target Pencapaian Fase akan di-generate oleh AI dalam bentuk tabel.*
+*Pemetaan dimensi Profil Pelajar Pancasila (${profilAktif || '-'}) beserta Elemen, Sub-Elemen, Target Pencapaian Fase akan di-generate oleh AI dalam bentuk tabel.*
 
 ## III. Alur Aktivitas (Langkah Kerja)
 *Alur proyek akan dijabarkan menjadi 4 tahap (Pengenalan, Kontekstualisasi, Aksi, Refleksi & Tindak Lanjut) sesuai dengan alokasi waktu ${textAlokasiWaktu}.*
@@ -2294,14 +2300,6 @@ ${logoImg}
               <div className="absolute inset-0 bg-[#0F172A]/90 backdrop-blur-sm flex flex-col items-center justify-center z-30 rounded-b-[2.5rem]">
                 <Loader2 className="w-12 h-12 text-[#FF8C00] animate-spin mb-4" />
                 <p className="font-black text-[11px] uppercase tracking-widest text-[#FF8C00] animate-pulse shadow-[0_0_15px_rgba(255,140,0,0.2)] px-4 py-2 rounded-full border border-[#FF8C00]/30">Menghubungkan ke AI...</p>
-              </div>
-            )}
-
-            {/* Indikator Melayang Saat AI Sedang Mengetik (Live Streaming) */}
-            {isGenerating && result && (
-              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-[#0F172A] border border-[#FF8C00]/50 text-[#FF8C00] px-5 py-3 rounded-full shadow-[0_0_20px_rgba(255,140,0,0.3)] flex items-center gap-3 z-50 animate-bounce">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-[10px] font-black uppercase tracking-widest">AI Sedang Menulis...</span>
               </div>
             )}
           </div>
