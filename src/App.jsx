@@ -1419,7 +1419,11 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
       }
 
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ 
+      model: "gemini-pro", 
+      generationConfig: { maxOutputTokens: 8192 } 
+    });
+    
       // PENERAPAN STREAMING 
       const resultAI = await model.generateContentStream({
         contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }]
