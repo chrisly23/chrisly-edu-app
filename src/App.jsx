@@ -1013,10 +1013,12 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
     
     const instruksiProporsional = `SANGAT PENTING: Karena ini dirancang untuk ${form.jumlahPertemuan} pertemuan, Anda WAJIB membagi "Tujuan Pembelajaran" dan "Langkah Kegiatan/Skenario" secara proporsional untuk tiap pertemuan. SETIAP pertemuan harus dibuatkan tabel kegiatan yang terpisah, dan total waktu pada masing-masing tabel pertemuan tersebut WAJIB berjumlah persis ${totalMenit} menit (gabungan dari waktu pendahuluan, inti, dan penutup).`;
 
+    const instruksiTabelTambahan = `ATURAN FORMAT TABEL MARKDOWN: Dilarang keras menggunakan Enter/Baris Baru (newline) murni di dalam sel tabel. Jika Anda butuh membuat baris baru atau list bullet di dalam sebuah kotak tabel, Anda WAJIB menggunakan tag HTML <br>. Pastikan setiap 1 baris tabel (row) ditulis sejajar lurus dalam 1 baris teks Markdown agar tabel tidak rusak.`;
+
     const profilAktif = Object.entries(form.profilPelajar).filter(([k,v]) => v).map(([k]) => k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())).join(', ');
     const logoImg = form.logoSekolah ? `<div style="text-align: center; margin-bottom: 20px;"><img src="${form.logoSekolah}" width="100" /></div>` : '';
     
-    let systemPrompt = `Anda adalah seorang Master Asisten Ahli Kurikulum Merdeka dan Dosen Ahli Pendidikan. Tugas Anda menyusun dokumen ${type.toUpperCase()} secara DETAIL, KOMPREHENSIF, dan SIAP PAKAI. Jabarkan setiap tahapan kegiatan secara mendalam, jangan diringkas. SANGAT PENTING: Anda WAJIB memastikan dokumen ditulis dari awal sampai tuntas selesai tanpa terpotong!`;
+    let systemPrompt = `Anda adalah seorang Master Asisten Ahli Kurikulum Merdeka dan Dosen Ahli Pendidikan. Tugas Anda menyusun dokumen ${type.toUpperCase()} secara DETAIL, KOMPREHENSIF, dan SIAP PAKAI. Jabarkan setiap tahapan kegiatan secara mendalam, jangan diringkas. SANGAT PENTING: Anda WAJIB memastikan dokumen ditulis dari awal sampai tuntas selesai tanpa terpotong!\n\n${instruksiTabelTambahan}`;
     
     if (type === 'slide') {
       systemPrompt += ` WAJIB gunakan struktur teks berpoin. Judul slide diawali dengan double hashtag (## Judul Slide). Berikan teknik penceritaan (storytelling) yang kuat di materi.`;
@@ -1163,267 +1165,6 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
           <td><strong>${form.namaGuru || '[Nama Guru]'}</strong><br/>NIP. ${form.nipGuru || '.......................'}</td>
         </tr>
       </table>`;
-    } else if (type === 'rpl') {
-      userPrompt = `Buat Rencana Pelaksanaan Layanan (RPL) Bimbingan dan Konseling tingkat mahir yang komprehensif.
-
-      Identitas & Spesifikasi:
-      - Pelaksana: ${form.namaGuru}
-      - Sekolah: ${form.namaSekolah}
-      - Sasaran (Kelas/Fase): Kelas ${form.kelas} / Fase ${form.fase}
-      - Semester: ${form.semester}
-      - Topik/Tema: ${form.mapel}
-      - Alokasi Waktu: ${textAlokasiWaktu}
-      - Komponen Layanan: ${form.komponenLayanan}
-      - Bidang Layanan: ${form.bidangLayanan}
-      - Fungsi Layanan: ${form.fungsiLayanan}
-      - Metode/Strategi: ${form.modelPembelajaran}
-      - Tujuan Umum & Khusus: ${form.tujuan}
-      - Topik Utama Materi: ${form.materi}
-      - Dimensi Profil Pelajar Pancasila: ${profilAktif || '-'}
-
-      ${instruksiProporsional}
-
-      STRUKTUR OUTPUT WAJIB (Gunakan Format Markdown dan Tabel agar rapi):
-      ${logoImg}
-      # RENCANA PELAKSANAAN LAYANAN (RPL) BIMBINGAN DAN KONSELING
-
-      ## 1. Identitas Layanan (Administratif)
-      [Buat tabel: Satuan Pendidikan, Tahun Ajaran/Semester, Sasaran, Pelaksana, Alokasi Waktu, Tujuan Layanan (Tulis mentah: ${form.tujuan})]
-
-      ## 2. Komponen dan Bidang Layanan
-      [Buat tabel: Komponen Layanan, Bidang Layanan, Fungsi Layanan]
-
-      ## 3. Konten Utama (Substansi)
-      [Buat tabel: Topik/Tema, Tujuan Umum, Tujuan Khusus (Tulis persis: ${form.tujuan}, JANGAN diuraikan/dijabarkan lagi), Materi Layanan (Rangkuman mendalam)]
-
-      ## 4. Strategi dan Metodologi
-      [Uraikan secara profesional: Metode, Media & Alat (spesifik), Sumber Materi (cantumkan referensi buku/jurnal psikologi/BK yang relevan)]
-
-      ## 5. Skenario Kegiatan (Tahapan)
-      [PENTING: Jabarkan skenario kegiatan Bimbingan dan Konseling untuk SETIAP PERTEMUAN secara mendalam (Total: ${form.jumlahPertemuan} Pertemuan). Buat tabel terpisah per pertemuan berisi: Tahap (Pendahuluan: wajib sertakan Ice Breaking/Rapport, Inti: uraikan dinamika interaksi siswa dan konselor, Penutup), Uraian Kegiatan (Jangan meringkas), dan Waktu (taruh di kolom paling kanan dengan total persis ${totalMenit} menit per tabel)]
-
-      ## 6. Evaluasi dan Pelaporan
-      [Uraikan mendalam dengan indikator yang jelas: Evaluasi Proses (Antusiasme, dinamika kelompok), Evaluasi Hasil (Pemahaman/Understanding, Perasaan Positif/Comfortable, Rencana Tindakan/Action), Tindak Lanjut]
-
-      ## 7. Lampiran
-      - Uraian Materi (Jabarkan konten materi psikologis/bimbingannya dengan sangat detail)
-      - Instrumen Evaluasi (Berikan draft lembar kuesionernya)
-      - Media Visual (Deskripsi media pendukung)
-
-      ## Pengesahan
-      <br/><br/>
-      <table class="no-border-table" style="width:100%; text-align:center;">
-        <tr>
-          <td style="width:50%;">Mengetahui,<br/>Kepala Sekolah</td>
-          <td style="width:50%;">Guru / Konselor</td>
-        </tr>
-        <tr>
-          <td style="height:80px;"></td>
-          <td></td>
-        </tr>
-        <tr>
-          <td><strong>${form.namaKepsek || '[Nama Kepala Sekolah]'}</strong><br/>NIP. ${form.nipKepsek || '.......................'}</td>
-          <td><strong>${form.namaGuru || '[Nama Guru]'}</strong><br/>NIP. ${form.nipGuru || '.......................'}</td>
-        </tr>
-      </table>`;
-    } else if (type === 'kokurikuler') {
-      userPrompt = `Buat Modul Projek Kokurikuler (P5) yang SANGAT DETAIL, KOMPREHENSIF, dan SIAP PAKAI. Dilarang keras menyingkat materi.
-
-      Identitas:
-      - Penyusun: ${form.namaGuru}
-      - Institusi: ${form.namaSekolah}
-      - Jenjang & Fase: ${form.jenjang} / Fase ${form.fase}
-      - Tema Projek: ${form.mapel}
-      - Judul Projek: ${form.materi}
-      - Alokasi Waktu: ${textAlokasiWaktu}
-      - Dimensi Profil Pelajar Pancasila: ${profilAktif || '-'}
-
-      STRUKTUR OUTPUT WAJIB (Gunakan Markdown yang rapi):
-      ${logoImg}
-      # MODUL PROJEK KOKURIKULER: ${form.materi.toUpperCase()}
-
-      ## I. Identitas & Komponen Umum
-      [Buat tabel: Judul Proyek, Tema Besar, Fase/Kelas, Alokasi Waktu, Penyusun, Institusi]
-      - **Target Peserta Didik:** [Reguler/Inklusi]
-      - **Sarana & Prasarana:** [Daftar alat dan media spesifik yang dibutuhkan]
-
-      ## II. Pemetaan Dimensi & Tujuan (Inti)
-      [Pilih 2-3 dimensi dari: ${profilAktif || 'Beriman, Berkebinekaan, Gotong Royong, Mandiri, Bernalar Kritis, Kreatif'}]
-      [Buat tabel pemetaan yang berisi: Dimensi, Elemen, Sub-Elemen, dan Target Pencapaian Fase]
-
-      ## III. Alur Aktivitas (Langkah Kerja)
-      [PENTING: Jabarkan alur proyek menjadi 4 tahap besar. Buat tabel rincian aktivitas untuk masing-masing tahap dengan alokasi waktu yang jelas (total keseluruhan sesuai ${textAlokasiWaktu})]
-      1. **Tahap Pengenalan:** [Aktivitas membangun kesadaran/eksplorasi isu]
-      2. **Tahap Kontekstualisasi:** [Aktivitas menghubungkan isu dengan lingkungan sekolah/sekitar]
-      3. **Tahap Aksi:** [Implementasi solusi/pembuatan produk/kampanye]
-      4. **Tahap Refleksi & Tindak Lanjut:** [Evaluasi keberhasilan dan rencana keberlanjutan]
-
-      ## IV. Asesmen (Penilaian)
-      [Uraikan instrumen penilaian:]
-      - **Asesmen Diagnostik:** [Tes awal lisan/tertulis]
-      - **Asesmen Formatif:** [Jurnal, observasi progres]
-      - **Asesmen Sumatif:** [Penilaian produk akhir / Panen Hasil Belajar]
-
-      ## V. Lampiran & Rubrik Detail
-      - **Lembar Kerja Peserta Didik (LKPD):** [Panduan langkah per tahapan untuk siswa]
-      - **Rubrik Pencapaian:** [Buat tabel indikator performa dengan skala: Mulai Berkembang (MB), Sedang Berkembang (SB), Berkembang Sesuai Harapan (BSH), Sangat Berkembang (SAB)]
-      - **Bahan Bacaan:** [Ringkasan materi esensial terkait topik ${form.materi}]
-
-      ## Pengesahan
-      <br/><br/>
-      <table class="no-border-table" style="width:100%; text-align:center;">
-        <tr>
-          <td style="width:50%;">Mengetahui,<br/>Kepala Sekolah</td>
-          <td style="width:50%;">Koordinator / Fasilitator Projek</td>
-        </tr>
-        <tr>
-          <td style="height:80px;"></td>
-          <td></td>
-        </tr>
-        <tr>
-          <td><strong>${form.namaKepsek || '[Nama Kepala Sekolah]'}</strong><br/>NIP. ${form.nipKepsek || '.......................'}</td>
-          <td><strong>${form.namaGuru || '[Nama Guru]'}</strong><br/>NIP. ${form.nipGuru || '.......................'}</td>
-        </tr>
-      </table>`;
-    } else if (type === 'modul') {
-      userPrompt = `Buat Rencana Pelaksanaan Pembelajaran (RPP) yang SANGAT DETAIL, KOMPREHENSIF, dan SIAP PAKAI. Dilarang keras menyingkat materi.
-
-      Identitas:
-      - Penyusun: ${form.namaGuru}
-      - Institusi: ${form.namaSekolah}
-      - Jenjang Sekolah: ${form.jenjang}
-      - Kelas & Fase: Kelas ${form.kelas} / Fase ${form.fase}
-      - Semester: ${form.semester}
-      - Mata Pelajaran: ${form.mapel}
-      - Alokasi Waktu: ${textAlokasiWaktu} 
-      - Model Pembelajaran: ${form.modelPembelajaran}
-      - Target Peserta Didik: Reguler
-      - Topik Pokok: ${form.materi}
-      - Tujuan Pembelajaran (TP): ${form.tujuan}
-      - Dimensi Profil Pelajar Pancasila: ${profilAktif || '-'}
-      - Gaya Bahasa Modul: ${form.gayaBahasa}
-
-      ${instruksiProporsional}
-
-      STRUKTUR OUTPUT WAJIB (Gunakan Markdown yang rapi):
-      ${logoImg}
-      # RENCANA PELAKSANAAN PEMBELAJARAN: ${form.mapel.toUpperCase()}
-
-      ## BAGIAN I: INFORMASI UMUM
-      [Buat dalam format tabel rapi berisi Identitas Dokumen (Penyusun, Institusi, Tahun, Jenjang, Kelas/Fase, Mapel, Alokasi Waktu, Tujuan Pembelajaran (Tulis mentah: ${form.tujuan})), Kompetensi Awal/Prasyarat, Profil Pelajar Pancasila, Sarana dan Prasarana, Target Peserta Didik, dan Model Pembelajaran]
-
-      ## BAGIAN II: KOMPONEN INTI
-      **A. Tujuan Pembelajaran (TP)**
-      ${form.tujuan} (Tuliskan persis seperti ini, JANGAN dijabarkan atau dipecah menjadi indikator lain)
-
-      **B. Pemahaman Bermakna**
-      [Jelaskan pesan inti esensial atau filosofi mengapa materi ini sangat penting untuk masa depan siswa (Kontekstualisasi kehidupan nyata)]
-
-      **C. Pertanyaan Pemantik**
-      [Berikan 3-5 pertanyaan pemancing rasa ingin tahu yang menantang nalar kritis (HOTS) terkait topik]
-
-      **D. Kegiatan Pembelajaran (SANGAT DETAIL)**
-      [PENTING: Jabarkan Skenario Kegiatan Guru dan Siswa untuk SETIAP PERTEMUAN (Total: ${form.jumlahPertemuan} pertemuan). Skenario harus interaktif, nyata, dan sesuai sintaks model ${form.modelPembelajaran}. Jangan diringkas! Buat tabel terpisah per pertemuan dengan kolom: Tahap Pembelajaran (Pendahuluan, Inti, Penutup), Uraian Kegiatan Guru & Siswa, dan Alokasi Waktu (kolom waktu di paling kanan dengan total durasi persis ${totalMenit} menit tiap tabel pertemuannya)]
-
-      **E. Asesmen (Penilaian)**
-      [Uraikan strategi mendalam tentang Asesmen Diagnostik (Kognitif/Non-Kognitif), Formatif (saat proses), dan Sumatif (Akhir). Sertakan teknik dan bentuk asesmennya]
-
-      **F. Pengayaan dan Remedial**
-      [Strategi konkret untuk diferensiasi siswa: siswa yang cepat paham (Pengayaan) dan siswa yang tertinggal (Remedial)]
-
-      **G. Refleksi Guru dan Peserta Didik**
-      [Daftar pertanyaan panduan refleksi diri bagi guru dan siswa setelah pembelajaran selesai]
-
-      ## BAGIAN III: LAMPIRAN
-      **A. Lembar Kerja Peserta Didik (LKPD)**
-      [Tugas atau panduan aktivitas siswa singkat]
-
-      **B. Bahan Bacaan Guru & Siswa**
-      [Tuliskan jabaran materi / bahan bacaan guru secara berbobot dan informatif berdasarkan materi: ${form.materi}]
-
-      **C. Glosarium**
-      [Daftar kata/istilah teknis penting beserta definisinya]
-
-      **D. Daftar Pustaka**
-      [Sumber referensi relevan (Buku teks, website, dsb)]
-
-      **E. Rubrik Penilaian Singkat**
-      [Berikan format rubrik penilaian/kriteria penilaian kompetensi secara jelas]
-
-      ## Pengesahan
-      <br/><br/>
-      <table class="no-border-table" style="width:100%; text-align:center;">
-        <tr>
-          <td style="width:50%;">Mengetahui,<br/>Kepala Sekolah</td>
-          <td style="width:50%;">Guru Mata Pelajaran</td>
-        </tr>
-        <tr>
-          <td style="height:80px;"></td>
-          <td></td>
-        </tr>
-        <tr>
-          <td><strong>${form.namaKepsek || '[Nama Kepala Sekolah]'}</strong><br/>NIP. ${form.nipKepsek || '.......................'}</td>
-          <td><strong>${form.namaGuru || '[Nama Guru]'}</strong><br/>NIP. ${form.nipGuru || '.......................'}</td>
-        </tr>
-      </table>`;
-    } else if (type === 'rpm') {
-      userPrompt = `Buat Rencana Pembelajaran Mendalam (RPM) secara detail dan komprehensif berfokus pada "Deep Learning".
-      
-      Identitas & Spesifikasi:
-      - Pelaksana/Guru: ${form.namaGuru}
-      - Sekolah: ${form.namaSekolah}
-      - Jenjang / Kelas / Fase: ${form.jenjang} / Kelas ${form.kelas} / Fase ${form.fase}
-      - Semester: ${form.semester}
-      - Mata Pelajaran: ${form.mapel}
-      - Alokasi Waktu: ${textAlokasiWaktu} (Susun pengalaman belajar proporsional untuk ${form.jumlahPertemuan} pertemuan)
-      - Model Pembelajaran: ${form.modelPembelajaran}
-      - Topik Kontekstual/Materi: ${form.materi}
-      - Tujuan Pembelajaran: ${form.tujuan}
-      - Gaya Bahasa: ${form.gayaBahasa}
-      - Dimensi Profil Lulusan Pancasila: ${profilAktif || '-'}
-
-      ${instruksiProporsional}
-
-      STRUKTUR OUTPUT WAJIB (Gunakan Format Tabel Markdown yang rapi pada bagian yang memungkinkan):
-      ${logoImg}
-      # RENCANA PEMBELAJARAN MENDALAM
-
-      ## 1. Komponen Identifikasi (Kompas Pembelajaran)
-      [Buat tabel Identitas: Satuan Pendidikan, Nama Guru, Mata Pelajaran, Fase/Kelas, Semester, Alokasi Waktu, Tujuan Pembelajaran (Tulis mentah: ${form.tujuan})]
-      - **Identifikasi Peserta Didik:** [Uraikan gambaran kesiapan belajar, minat, latar belakang, dan kebutuhan spesifik siswa]
-      - **Identifikasi Materi:** [Analisis karakteristik materi konseptual/prosedural, tingkat kesulitan, dan relevansinya dengan kehidupan nyata berdasarkan topik: ${form.materi}]
-      - **Dimensi Profil Lulusan:** [Uraikan karakter atau kompetensi lulusan yang ingin dicapai, fokus pada: ${profilAktif || 'Bernalar Kritis dan Kreatif'}]
-
-      ## 2. Desain Pembelajaran (Kerangka Operasional)
-      - **Tujuan Pembelajaran (TP):** ${form.tujuan} (Tuliskan persis seperti ini, JANGAN dijabarkan/dipetakan lagi)
-      - **Topik Kontekstual:** [Jelaskan tema yang relevan dengan keseharian siswa dan bagaimana mengintegrasikan lintas disiplin ilmu pada topik ini]
-      - **Karakteristik Pembelajaran:** [Jabarkan praktik pedagogis dengan model ${form.modelPembelajaran}, pemanfaatan teknologi digital, lingkungan belajar, dan kemitraan luar jika ada]
-
-      ## 3. Pengalaman Belajar (Siklus Kognitif)
-      [PENTING: Jabarkan pengalaman belajar untuk SETIAP PERTEMUAN (Total: ${form.jumlahPertemuan} Pertemuan). Rangkaian aktivitas WAJIB mengandung 3 tahap utama: Tahap Memahami (Understanding), Tahap Mengaplikasi (Applying), dan Tahap Merefleksi (Reflecting). Seluruh tahap harus mengusung prinsip Berkesadaran (Mindful), Bermakna (Meaningful), dan Menggembirakan (Joyful). Buat TABEL TERPISAH PER PERTEMUAN dengan format Markdown Sempurna berisi kolom: | Tahap | Uraian Aktivitas Guru & Siswa | Waktu | (total persis ${totalMenit} menit per tabel)]
-
-      ## 4. Asesmen Pembelajaran
-      [Uraikan strategi penilaian yang berkelanjutan:]
-      - **Asesmen Awal:** [Menilai pengetahuan prasyarat/kesiapan]
-      - **Asesmen Proses (Formatif):** [Umpan balik selama pembelajaran berlangsung]
-      - **Asesmen Akhir (Sumatif):** [Mengukur pencapaian kompetensi di akhir siklus]
-
-      ## Pengesahan
-      <br/><br/>
-      <table class="no-border-table" style="width:100%; text-align:center;">
-        <tr>
-          <td style="width:50%;">Mengetahui,<br/>Kepala Sekolah</td>
-          <td style="width:50%;">Guru Mata Pelajaran</td>
-        </tr>
-        <tr>
-          <td style="height:80px;"></td>
-          <td></td>
-        </tr>
-        <tr>
-          <td><strong>${form.namaKepsek || '[Nama Kepala Sekolah]'}</strong><br/>NIP. ${form.nipKepsek || '.......................'}</td>
-          <td><strong>${form.namaGuru || '[Nama Guru]'}</strong><br/>NIP. ${form.nipGuru || '.......................'}</td>
-        </tr>
-      </table>`;
     }
 
     try {
@@ -1443,26 +1184,51 @@ const Generator = ({ type, user, appId, userData, usageCount, onSuccess, isDemo 
         generationConfig: { maxOutputTokens: 8192 }
       });
       
-      const resultAI = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }]
-      });
+      if (apiKey) {
+        // VERCEL ENVIRONMENT: Menggunakan Streaming untuk mencegah timeout / terputus di tengah jalan
+        const resultAI = await model.generateContentStream({
+          contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }]
+        });
 
-      const fullText = resultAI.response.text();
-      setResult(fullText);
+        let fullText = "";
+        for await (const chunk of resultAI.stream) {
+          const chunkText = chunk.text();
+          fullText += chunkText;
+          setResult(fullText); // Update progresif ke layar
+        }
 
-      if (fullText) {
+        if (!fullText) throw new Error("AI mengembalikan respon kosong.");
+
         if (!isDemo && userData?.username) {
           const today = new Date().toISOString().split('T')[0];
           const usageRef = doc(db, 'artifacts', appId, 'public', 'data', 'usages', `${today}_${userData.username}`);
           await setDoc(usageRef, { count: increment(1), date: today, username: userData.username }, { merge: true });
         }
       } else {
-         throw new Error("AI mengembalikan respon kosong.");
+        // CANVAS ENVIRONMENT: Non-Streaming
+        const resultAI = await model.generateContent({
+          contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }]
+        });
+
+        const fullText = resultAI.response.text();
+        setResult(fullText);
+
+        if (fullText) {
+          if (!isDemo && userData?.username) {
+            const today = new Date().toISOString().split('T')[0];
+            const usageRef = doc(db, 'artifacts', appId, 'public', 'data', 'usages', `${today}_${userData.username}`);
+            await setDoc(usageRef, { count: increment(1), date: today, username: userData.username }, { merge: true });
+          }
+        } else {
+           throw new Error("AI mengembalikan respon kosong.");
+        }
       }
 
     } catch (error) {
       console.error("Detail Error AI:", error);
-      setResult("");
+      
+      // JANGAN hapus hasil jika sudah setengah jadi (terputus jaringan)
+      setResult((prev) => prev ? prev + "\n\n> ⚠️ **[TERPUTUS] Proses pembuatan berhenti akibat kendala jaringan. Silakan klik tombol 'Proses Ulang AI'.**" : "");
       
       let errorMsg = error.message || "Periksa koneksi internet Anda.";
       let apiKeyCheck = "";
